@@ -2,15 +2,16 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>RD Sandbox</title>
+    <title>RD Sandbox Fixed</title>
     <style>
         body { margin: 0; background: #111; color: #eee; font-family: sans-serif; overflow: hidden; display: flex; }
-        canvas { background: #000; cursor: crosshair; }
-        #ui { padding: 10px; width: 250px; height: 100vh; overflow-y: auto; background: #222; }
-        .ctrl { margin-bottom: 10px; }
-        label { display: block; font-size: 12px; }
-        input { width: 100%; }
-        button { width: 100%; padding: 5px; margin-top: 5px; cursor: pointer; }
+        canvas { background: #000; cursor: crosshair; image-rendering: pixelated; }
+        #ui { padding: 15px; width: 240px; height: 100vh; background: #222; box-sizing: border-box; }
+        .ctrl { margin-bottom: 12px; }
+        label { display: block; font-size: 11px; margin-bottom: 2px; }
+        input, select { width: 100%; background: #333; color: #fff; border: 1px solid #555; }
+        button { width: 100%; padding: 8px; margin-top: 5px; cursor: pointer; background: #444; color: #fff; border: none; }
+        button:hover { background: #555; }
     </style>
 </head>
 <body>
@@ -23,20 +24,19 @@
                 <option value="metaball">Metaballs</option>
             </select>
         </div>
-        <div class="ctrl"><label>Feed (f)</label><input type="range" id="f" min="0.01" max="0.1" step="0.001" value="0.055"></div>
-        <div class="ctrl"><label>Kill (k)</label><input type="range" id="k" min="0.01" max="0.1" step="0.001" value="0.062"></div>
-        <div class="ctrl"><label>Speed</label><input type="range" id="speed" min="1" max="20" step="1" value="8"></div>
+        <div class="ctrl"><label>Feed (f): <span id="fv">0.037</span></label><input type="range" id="f" min="0.01" max="0.1" step="0.001" value="0.037"></div>
+        <div class="ctrl"><label>Kill (k): <span id="kv">0.060</span></label><input type="range" id="k" min="0.01" max="0.1" step="0.001" value="0.060"></div>
+        <div class="ctrl"><label>Speed: <span id="sv">4</span></label><input type="range" id="speed" min="1" max="20" step="1" value="4"></div>
         <div class="ctrl"><label>Color Hue</label><input type="range" id="hue" min="0" max="360" step="1" value="200"></div>
         <button id="reset">Clear & Reset</button>
         <button id="start">Start / Pause</button>
-        <p style="font-size:10px">Tap canvas to seed points.<br>Change shape resets seeds.</p>
     </div>
     <canvas id="cvs"></canvas>
 
 <script>
 const W = 200, H = 200;
 const canvas = document.getElementById('cvs');
-const ctx = canvas.getContext('2d');
+const ctx = canvas.getContext('2d', {alpha: false});
 canvas.width = W; canvas.height = H;
 canvas.style.width = 'min(90vh, 90vw)';
 canvas.style.height = 'min(90vh, 90vw)';
@@ -46,109 +46,114 @@ let gridB = new Float32Array(W * H).fill(0);
 let nextA = new Float32Array(W * H);
 let nextB = new Float32Array(W * H);
 let mask = new Uint8Array(W * H).fill(1);
-
 let running = false;
-const params = { f: 0.055, k: 0.062, speed: 8, hue: 200, da: 1.0, db: 0.5 };
 
-const getIdx = (x, y) => (x + W) % W + ((y + H) % H) * W;
+const p = { f: 0.037, k: 0.060, speed: 4, hue: 200, da: 1.0, db: 0.5 };
+
+const getIdx = (x, y) => ((x + W) % W) + ((y + H) % H) * W;
 
 function updateMask() {
-    mask.fill(0);
     const type = document.getElementById('shape').value;
     const mCtx = Object.assign(document.createElement('canvas'), {width: W, height: H}).getContext('2d');
+    mCtx.fillStyle = "black"; mCtx.fillRect(0,0,W,H);
     mCtx.fillStyle = "white";
-    
-    if (type === 'circle') {
-        mCtx.beginPath(); mCtx.arc(W/2, H/2, W/2.2, 0, Math.PI*2); mCtx.fill();
-    } else if (type === 'square') {
-        mCtx.fillRect(10, 10, W-20, H-20);
-    } else if (type === 'horse') {
-        mCtx.font = `${W}px serif`; mCtx.textAlign = "center"; mCtx.textBaseline = "middle";
-        mCtx.fillText('🐎', W/2, H/2);
-    } else if (type === 'metaball') {
-        const balls = Array.from({length: 5}, () => ({x: Math.random()*W, y: Math.random()*H, r: 20+Math.random()*30}));
+    if (type === 'circle') { mCtx.beginPath(); mCtx.arc(W/2, H/2, W/2.3, 0, Math.PI*2); mCtx.fill(); }
+    else if (type === 'square') { mCtx.fillRect(20, 20, W-40, H-40); }
+    else if (type === 'horse') { mCtx.font = `${W*0.8}px serif`; mCtx.textAlign="center"; mCtx.textBaseline="middle"; mCtx.fillText('🐎', W/2, H/2+10); }
+    else if (type === 'metaball') {
+        const balls = Array.from({length: 5}, () => ({x: Math.random()*W, y: Math.random()*H, r: 25+Math.random()*25}));
         for(let y=0; y<H; y++) for(let x=0; x<W; x++) {
-            let val = 0;
-            balls.forEach(b => val += (b.r*b.r) / (Math.pow(x-b.x, 2) + Math.pow(y-b.y, 2)));
-            if (val > 1) mCtx.fillRect(x, y, 1, 1);
+            let v = 0; balls.forEach(b => v += (b.r*b.r) / (Math.pow(x-b.x, 2) + Math.pow(y-b.y, 2)));
+            if (v > 1.0) mCtx.fillRect(x, y, 1, 1);
         }
     }
-    const data = mCtx.getImageData(0,0,W,H).data;
-    for(let i=0; i<W*H; i++) mask[i] = data[i*4] > 0 ? 1 : 0;
+    const d = mCtx.getImageData(0,0,W,H).data;
+    for(let i=0; i<W*H; i++) mask[i] = d[i*4] > 128 ? 1 : 0;
     resetSim();
 }
 
 function resetSim() {
     gridA.fill(1); gridB.fill(0);
+    draw();
 }
 
-canvas.addEventListener('mousedown', e => {
-    const rect = canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left) / rect.width * W);
-    const y = Math.floor((e.clientY - rect.top) / rect.height * H);
-    for(let i=-2; i<=2; i++) for(let j=-2; j<=2; j++) {
-        let idx = getIdx(x+i, y+j);
-        if(mask[idx]) gridB[idx] = 1;
+canvas.onmousedown = (e) => {
+    const r = canvas.getBoundingClientRect();
+    const mx = Math.floor((e.clientX - r.left) / r.width * W);
+    const my = Math.floor((e.clientY - r.top) / r.height * H);
+    for(let y=-3; y<=3; y++) for(let x=-3; x<=3; x++) {
+        const idx = getIdx(mx+x, my+y);
+        if(mask[idx]) gridB[idx] = 1.0;
     }
-    draw();
-});
+    if(!running) draw();
+};
 
 function step() {
     for(let y=0; y<H; y++) {
         for(let x=0; x<W; x++) {
             const i = x + y * W;
-            if(!mask[i]) { nextA[i]=1; nextB[i]=0; continue; }
+            if(mask[i] === 0) { nextA[i] = 1.0; nextB[i] = 0; continue; }
             
             const a = gridA[i], b = gridB[i];
-            const lapA = (
-                gridA[getIdx(x-1,y)] + gridA[getIdx(x+1,y)] + gridA[getIdx(x,y-1)] + gridA[getIdx(x,y+1)]
-            ) * 0.2 - a;
-            const lapB = (
-                gridB[getIdx(x-1,y)] + gridB[getIdx(x+1,y)] + gridB[getIdx(x,y-1)] + gridB[getIdx(x,y+1)]
-            ) * 0.2 - b;
-
             const abb = a * b * b;
-            nextA[i] = a + (params.da * lapA - abb + params.f * (1 - a));
-            nextB[i] = b + (params.db * lapB + abb - (params.k + params.f) * b);
+            
+            // 9-point Laplacian
+            const lapA = gridA[getIdx(x-1,y)]*0.2 + gridA[getIdx(x+1,y)]*0.2 + gridA[getIdx(x,y-1)]*0.2 + gridA[getIdx(x,y+1)]*0.2 +
+                         gridA[getIdx(x-1,y-1)]*0.05 + gridA[getIdx(x+1,y-1)]*0.05 + gridA[getIdx(x-1,y+1)]*0.05 + gridA[getIdx(x+1,y+1)]*0.05 - a;
+            const lapB = gridB[getIdx(x-1,y)]*0.2 + gridB[getIdx(x+1,y)]*0.2 + gridB[getIdx(x,y-1)]*0.2 + gridB[getIdx(x,y+1)]*0.2 +
+                         gridB[getIdx(x-1,y-1)]*0.05 + gridB[getIdx(x+1,y-1)]*0.05 + gridB[getIdx(x-1,y+1)]*0.05 + gridB[getIdx(x+1,y+1)]*0.05 - b;
+
+            nextA[i] = Math.max(0, Math.min(1, a + (p.da * lapA - abb + p.f * (1 - a))));
+            nextB[i] = Math.max(0, Math.min(1, b + (p.db * lapB + abb - (p.k + p.f) * b)));
         }
     }
-    [gridA, nextA] = [nextA, gridA];
-    [gridB, nextB] = [nextB, gridB];
+    gridA.set(nextA); gridB.set(nextB);
 }
 
 function draw() {
     const img = ctx.createImageData(W, H);
     for(let i=0; i<W*H; i++) {
-        const val = Math.max(0, Math.min(1, gridA[i] - gridB[i]));
-        const c = val * 255;
-        const idx = i * 4;
-        if(!mask[i]) {
-            img.data[idx]=img.data[idx+1]=img.data[idx+2]=20;
+        const px = i * 4;
+        if(mask[i] === 0) {
+            img.data[px]=img.data[px+1]=img.data[px+2]=30;
         } else {
-            img.data[idx] = c * (params.hue/360);
-            img.data[idx+1] = c * 0.5;
-            img.data[idx+2] = 255 - c;
+            const val = Math.max(0, 1 - (gridA[i] - gridB[i]));
+            const hue = p.hue, sat = 80, light = val * 50;
+            const rgb = hlsToRgb(hue, light, sat);
+            img.data[px] = rgb[0]; img.data[px+1] = rgb[1]; img.data[px+2] = rgb[2];
         }
-        img.data[idx+3] = 255;
+        img.data[px+3] = 255;
     }
     ctx.putImageData(img, 0, 0);
 }
 
+function hlsToRgb(h, l, s) {
+    s /= 100; l /= 100;
+    const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c/2;
+    let r=0, g=0, b=0;
+    if (h<60) [r,g,b]=[c,x,0]; else if (h<120) [r,g,b]=[x,c,0]; else if (h<180) [r,g,b]=[0,c,x];
+    else if (h<240) [r,g,b]=[0,x,c]; else if (h<300) [r,g,b]=[x,0,c]; else [r,g,b]=[c,0,x];
+    return [(r+m)*255, (g+m)*255, (b+m)*255];
+}
+
 function loop() {
     if(running) {
-        params.f = parseFloat(document.getElementById('f').value);
-        params.k = parseFloat(document.getElementById('k').value);
-        params.speed = parseInt(document.getElementById('speed').value);
-        params.hue = parseInt(document.getElementById('hue').value);
-        for(let i=0; i<params.speed; i++) step();
+        p.f = parseFloat(document.getElementById('f').value);
+        p.k = parseFloat(document.getElementById('k').value);
+        p.speed = parseInt(document.getElementById('speed').value);
+        p.hue = parseInt(document.getElementById('hue').value);
+        document.getElementById('fv').innerText = p.f.toFixed(3);
+        document.getElementById('kv').innerText = p.k.toFixed(3);
+        document.getElementById('sv').innerText = p.speed;
+        for(let i=0; i<p.speed; i++) step();
+        draw();
     }
-    draw();
     requestAnimationFrame(loop);
 }
 
 document.getElementById('shape').onchange = updateMask;
 document.getElementById('reset').onclick = resetSim;
-document.getElementById('start').onclick = () => running = !running;
+document.getElementById('start').onclick = () => { running = !running; document.getElementById('start').innerText = running ? "Pause" : "Start"; };
 
 updateMask();
 loop();
