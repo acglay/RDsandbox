@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>RD Sandbox Pro</title>
+    <title>RD Sandbox - Scale Adjusted</title>
     <style>
         body { margin: 0; background: #111; color: #eee; font-family: sans-serif; overflow: hidden; display: flex; font-size: 11px; }
         #ui { padding: 15px; width: 240px; height: 100vh; background: #222; box-sizing: border-box; overflow-y: auto; }
@@ -18,28 +18,23 @@
     <div id="ui">
         <div class="ctrl"><label>Preset</label>
             <select id="preset">
-                <option value="manual">Manual (Edit Sliders)</option>
-                <option value="mitosis">Mitosis (Cell Division)</option>
+                <option value="manual">Manual</option>
+                <option value="mitosis">Mitosis</option>
                 <option value="coral">Coral / Maze</option>
-                <option value="bacteria">Bacteria</option>
-                <option value="spirals">Spirals / Waves</option>
-                <option value="fingerprint">Fingerprint</option>
+                <option value="spirals">Spirals</option>
             </select>
         </div>
-        <div class="ctrl"><label>Shape</label>
-            <select id="shape">
-                <option value="circle">Circle</option><option value="square">Square</option>
-                <option value="horse">Horse</option><option value="metaball">Metaballs</option>
-            </select>
+        <div class="ctrl">
+            <label>Pattern Scale (Fine-ness): <span id="sv_scale">1.0</span></label>
+            <input type="range" id="scale" min="0.1" max="1.5" step="0.1" value="1.0">
+            <small style="color:#888">小さいほど模様が細かくなります</small>
         </div>
         <div class="ctrl"><label>Feed (f): <span id="fv"></span></label><input type="range" id="f" min="0.01" max="0.1" step="0.001" value="0.037"></div>
         <div class="ctrl"><label>Kill (k): <span id="kv"></span></label><input type="range" id="k" min="0.01" max="0.1" step="0.001" value="0.060"></div>
         <div class="ctrl"><label>Sim Speed: <span id="sv"></span></label><input type="range" id="speed" min="1" max="25" step="1" value="8"></div>
-        <div class="ctrl"><label>Pattern Hue</label><input type="range" id="hue" min="0" max="360" step="1" value="200"></div>
-        <div class="ctrl"><label>Background Hue</label><input type="range" id="bgHue" min="0" max="360" step="1" value="240"></div>
-        <div class="ctrl"><label><input type="checkbox" id="glow" style="width:auto"> Glow Effect</label></div>
-        <button id="reset">Clear Simulation</button>
-        <button id="default">Reset to Default</button>
+        <div class="ctrl"><label>Hue</label><input type="range" id="hue" min="0" max="360" step="1" value="200"></div>
+        <div class="ctrl"><label><input type="checkbox" id="glow" style="width:auto"> Glow</label></div>
+        <button id="reset">Clear</button>
         <button id="start" style="background:#557">Start</button>
     </div>
     <canvas id="cvs"></canvas>
@@ -53,29 +48,15 @@ canvas.style.width = 'min(90vh, 90vw)'; canvas.style.height = 'min(90vh, 90vw)';
 let gridA = new Float32Array(W*H).fill(1), gridB = new Float32Array(W*H).fill(0);
 let nextA = new Float32Array(W*H), nextB = new Float32Array(W*H), mask = new Uint8Array(W*H).fill(1);
 let running = false;
-const p = { f: 0.037, k: 0.060, speed: 8, hue: 200, bgHue: 240, glow: false, da: 1.0, db: 0.5 };
+const p = { f: 0.037, k: 0.060, speed: 8, hue: 200, glow: false, da: 1.0, db: 0.5 };
 
-const presets = {
-    mitosis: { f: 0.036, k: 0.064 }, coral: { f: 0.054, k: 0.062 },
-    bacteria: { f: 0.035, k: 0.060 }, spirals: { f: 0.018, k: 0.051 }, fingerprint: { f: 0.054, k: 0.061 }
-};
-
+const presets = { mitosis: { f: 0.036, k: 0.064 }, coral: { f: 0.054, k: 0.062 }, spirals: { f: 0.018, k: 0.051 } };
 const getIdx = (x, y) => ((x + W) % W) + ((y + H) % H) * W;
 
 function updateMask() {
     const mCtx = Object.assign(document.createElement('canvas'), {width: W, height: H}).getContext('2d');
-    mCtx.fillStyle = "black"; mCtx.fillRect(0,0,W,H); mCtx.fillStyle = "white";
-    const type = document.getElementById('shape').value;
-    if (type === 'circle') { mCtx.beginPath(); mCtx.arc(W/2, H/2, W/2.3, 0, Math.PI*2); mCtx.fill(); }
-    else if (type === 'square') mCtx.fillRect(20, 20, W-40, H-40);
-    else if (type === 'horse') { mCtx.font = `${W*0.8}px serif`; mCtx.textAlign="center"; mCtx.textBaseline="middle"; mCtx.fillText('🐎', W/2, H/2+10); }
-    else if (type === 'metaball') {
-        const balls = Array.from({length: 5}, () => ({x: Math.random()*W, y: Math.random()*H, r: 25+Math.random()*25}));
-        for(let y=0; y<H; y++) for(let x=0; x<W; x++) {
-            let v = 0; balls.forEach(b => v += (b.r*b.r) / (Math.pow(x-b.x, 2) + Math.pow(y-b.y, 2)));
-            if (v > 1.0) mCtx.fillRect(x, y, 1, 1);
-        }
-    }
+    mCtx.fillStyle="black"; mCtx.fillRect(0,0,W,H); mCtx.fillStyle="white";
+    mCtx.beginPath(); mCtx.arc(W/2, H/2, W/2.3, 0, Math.PI*2); mCtx.fill();
     const d = mCtx.getImageData(0,0,W,H).data;
     for(let i=0; i<W*H; i++) mask[i] = d[i*4] > 128 ? 1 : 0;
     gridA.fill(1); gridB.fill(0); draw();
@@ -83,18 +64,15 @@ function updateMask() {
 
 canvas.onmousedown = (e) => {
     const r = canvas.getBoundingClientRect(), mx = Math.floor((e.clientX - r.left) / r.width * W), my = Math.floor((e.clientY - r.top) / r.height * H);
-    const radius = 6;
-    for(let y=-radius; y<=radius; y++) for(let x=-radius; x<=radius; x++) {
+    for(let y=-4; y<=4; y++) for(let x=-4; x<=4; x++) {
         const d = Math.sqrt(x*x + y*y);
-        if(d < radius) {
-            const idx = getIdx(mx+x, my+y);
-            if(mask[idx]) gridB[idx] += (1 - d/radius) * 0.8;
-        }
+        if(d < 4) { const idx = getIdx(mx+x, my+y); if(mask[idx]) gridB[idx] += (1 - d/4) * 0.8; }
     }
     if(!running) draw();
 };
 
 function step() {
+    const da = p.da, db = p.db;
     for(let y=0; y<H; y++) for(let x=0; x<W; x++) {
         const i = x + y * W;
         if(mask[i] === 0) { nextA[i]=1; nextB[i]=0; continue; }
@@ -103,8 +81,8 @@ function step() {
                      gridA[getIdx(x-1,y-1)]*0.05 + gridA[getIdx(x+1,y-1)]*0.05 + gridA[getIdx(x-1,y+1)]*0.05 + gridA[getIdx(x+1,y+1)]*0.05 - a;
         const lapB = gridB[getIdx(x-1,y)]*0.2 + gridB[getIdx(x+1,y)]*0.2 + gridB[getIdx(x,y-1)]*0.2 + gridB[getIdx(x,y+1)]*0.2 +
                      gridB[getIdx(x-1,y-1)]*0.05 + gridB[getIdx(x+1,y-1)]*0.05 + gridB[getIdx(x-1,y+1)]*0.05 + gridB[getIdx(x+1,y+1)]*0.05 - b;
-        nextA[i] = Math.max(0, Math.min(1, a + (p.da * lapA - abb + p.f * (1 - a))));
-        nextB[i] = Math.max(0, Math.min(1, b + (p.db * lapB + abb - (p.k + p.f) * b)));
+        nextA[i] = Math.max(0, Math.min(1, a + (da * lapA - abb + p.f * (1 - a))));
+        nextB[i] = Math.max(0, Math.min(1, b + (db * lapB + abb - (p.k + p.f) * b)));
     }
     gridA.set(nextA); gridB.set(nextB);
 }
@@ -121,16 +99,12 @@ function draw() {
     const img = ctx.createImageData(W, H);
     for(let i=0; i<W*H; i++) {
         const px = i * 4;
-        if(mask[i] === 0) {
-            const bg = hlsToRgb(p.bgHue, 10, 30);
-            img.data[px]=bg[0]; img.data[px+1]=bg[1]; img.data[px+2]=bg[2];
-        } else {
-            const val = Math.max(0, 1 - (gridA[i] - gridB[i]));
-            const bVal = gridB[i];
-            let l = val * 50; 
-            if(p.glow) l += bVal * 60; // Glow logic
+        if(mask[i] === 0) { img.data[px]=img.data[px+1]=img.data[px+2]=25; } 
+        else {
+            const val = Math.max(0, 1 - (gridA[i] - gridB[i])), bVal = gridB[i];
+            let l = val * 50; if(p.glow) l += bVal * 60;
             const rgb = hlsToRgb(p.hue, Math.min(100, l), 80 + bVal*20);
-            img.data[px] = rgb[0]; img.data[px+1] = rgb[1]; img.data[px+2] = rgb[2];
+            img.data[px]=rgb[0]; img.data[px+1]=rgb[1]; img.data[px+2]=rgb[2];
         }
         img.data[px+3] = 255;
     }
@@ -138,41 +112,24 @@ function draw() {
 }
 
 function syncUI() {
-    const pre = document.getElementById('preset').value;
-    const isManual = pre === 'manual';
-    if(!isManual) {
-        document.getElementById('f').value = p.f = presets[pre].f;
-        document.getElementById('k').value = p.k = presets[pre].k;
-    }
+    const pre = document.getElementById('preset').value, isManual = pre === 'manual';
+    if(!isManual) { document.getElementById('f').value = p.f = presets[pre].f; document.getElementById('k').value = p.k = presets[pre].k; }
     document.getElementById('f').disabled = document.getElementById('k').disabled = !isManual;
+    const sc = parseFloat(document.getElementById('scale').value);
+    p.da = 1.0 * sc; p.db = 0.5 * sc; // ここで拡散率を調整
     p.speed = parseInt(document.getElementById('speed').value);
     p.hue = parseInt(document.getElementById('hue').value);
-    p.bgHue = parseInt(document.getElementById('bgHue').value);
     p.glow = document.getElementById('glow').checked;
     document.getElementById('fv').innerText = p.f.toFixed(3);
     document.getElementById('kv').innerText = p.k.toFixed(3);
     document.getElementById('sv').innerText = p.speed;
+    document.getElementById('sv_scale').innerText = sc.toFixed(1);
 }
 
-function loop() {
-    if(running) { syncUI(); for(let i=0; i<p.speed; i++) step(); draw(); }
-    else { syncUI(); draw(); }
-    requestAnimationFrame(loop);
-}
-
+function loop() { if(running) { syncUI(); for(let i=0; i<p.speed; i++) step(); draw(); } else { syncUI(); draw(); } requestAnimationFrame(loop); }
 document.getElementById('reset').onclick = () => { gridA.fill(1); gridB.fill(0); draw(); };
-document.getElementById('default').onclick = () => {
-    document.getElementById('preset').value = 'manual';
-    document.getElementById('f').value = 0.037; document.getElementById('k').value = 0.060;
-    document.getElementById('speed').value = 8; document.getElementById('hue').value = 200;
-    document.getElementById('bgHue').value = 240; document.getElementById('glow').checked = false;
-    syncUI();
-};
 document.getElementById('start').onclick = () => { running = !running; document.getElementById('start').innerText = running ? "Pause" : "Start"; };
-document.getElementById('shape').onchange = updateMask;
-
-updateMask();
-loop();
+updateMask(); loop();
 </script>
 </body>
 </html>
