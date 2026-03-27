@@ -3,23 +3,24 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RD Sandbox - Mobile Fix</title>
+    <title>RD Sandbox - Gravity Edition</title>
     <style>
         body { margin: 0; background: #111; color: #eee; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: row; font-size: 11px; height: 100vh; }
-        #ui { padding: 15px; width: 260px; height: 100%; background: #222; box-sizing: border-box; overflow-y: auto; flex-shrink: 0; }
+        #ui { padding: 15px; width: 260px; height: 100%; background: #222; box-sizing: border-box; overflow-y: auto; flex-shrink: 0; box-shadow: 2px 0 10px rgba(0,0,0,0.5); }
         .ctrl { margin-bottom: 12px; }
         .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
-        label { font-weight: bold; }
+        label { font-weight: bold; color: #aaa; }
         .reset-btn { background: #444; color: #fff; border: none; padding: 2px 6px; cursor: pointer; border-radius: 3px; font-size: 10px; }
-        input, select { width: 100%; background: #333; color: #fff; border: 1px solid #555; height: 26px; box-sizing: border-box; }
+        input, select { width: 100%; background: #333; color: #fff; border: 1px solid #555; height: 26px; border-radius: 4px; }
         input[type="color"] { padding: 0; border: none; height: 30px; }
-        .main-btn { width: 100%; padding: 10px; margin-top: 5px; cursor: pointer; background: #444; color: #fff; border: none; font-weight: bold; border-radius: 4px; }
+        .main-btn { width: 100%; padding: 10px; margin-top: 5px; cursor: pointer; background: #444; color: #fff; border: none; font-weight: bold; border-radius: 4px; transition: 0.2s; }
+        .main-btn:active { transform: scale(0.98); opacity: 0.8; }
         #canvas-wrap { flex-grow: 1; display: flex; align-items: center; justify-content: center; background: #000; overflow: hidden; position: relative; }
-        canvas { background: #000; touch-action: none; max-width: 95%; max-height: 95%; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        canvas { background: #000; touch-action: none; max-width: 95%; max-height: 95%; box-shadow: 0 0 30px rgba(0,0,0,0.8); }
         @media (max-width: 600px) {
             body { flex-direction: column; }
-            #ui { width: 100%; height: 40%; order: 2; }
-            #canvas-wrap { height: 60%; order: 1; }
+            #ui { width: 100%; height: 45%; order: 2; }
+            #canvas-wrap { height: 55%; order: 1; }
         }
     </style>
 </head>
@@ -44,13 +45,17 @@
             <div class="ctrl"><label>Pattern</label><input type="color" id="p-col" value="#00ffff"></div>
             <div class="ctrl"><label>Background</label><input type="color" id="bg-col" value="#1a1a2e"></div>
         </div>
+        <hr style="border:0; border-top:1px solid #444; margin:15px 0">
         <div class="ctrl"><div class="head"><label>Scale: <span id="sv_scale"></span></label><button class="reset-btn" onclick="resetParam('scale', 1.0)">↺</button></div><input type="range" id="scale" min="0.1" max="1.5" step="0.1" value="1.0"></div>
         <div class="ctrl"><div class="head"><label>Feed: <span id="fv"></span></label><button class="reset-btn" onclick="resetParam('f', 0.037)">↺</button></div><input type="range" id="f" min="0.01" max="0.1" step="0.001" value="0.037"></div>
         <div class="ctrl"><div class="head"><label>Kill: <span id="kv"></span></label><button class="reset-btn" onclick="resetParam('k', 0.060)">↺</button></div><input type="range" id="k" min="0.01" max="0.1" step="0.001" value="0.060"></div>
         <div class="ctrl"><div class="head"><label>Speed: <span id="sv"></span></label><button class="reset-btn" onclick="resetParam('speed', 8)">↺</button></div><input type="range" id="speed" min="1" max="25" step="1" value="8"></div>
         <div class="ctrl"><label><input type="checkbox" id="glow" style="width:auto" checked> Glow Effect</label></div>
-        <button class="main-btn" id="reset">Clear Canvas</button>
+        <div class="ctrl"><label><input type="checkbox" id="gravity" style="width:auto"> Gravity (Tilt Phone)</label></div>
+        
+        <button class="main-btn" id="reset" style="background:#555">Clear Canvas</button>
         <button class="main-btn" id="start" style="background:#4a5a9e">Start / Pause</button>
+        <button class="main-btn" id="save" style="background:#3a6e3a; margin-top:10px">Save Image</button>
     </div>
     <div id="canvas-wrap"><canvas id="cvs"></canvas></div>
 
@@ -58,7 +63,7 @@
 const W = 200, H = 200, canvas = document.getElementById('cvs'), ctx = canvas.getContext('2d', {alpha: false});
 canvas.width = W; canvas.height = H;
 let gridA = new Float32Array(W*H).fill(1), gridB = new Float32Array(W*H).fill(0), nextA = new Float32Array(W*H), nextB = new Float32Array(W*H), mask = new Float32Array(W*H).fill(1), running = false;
-const p = { f: 0.037, k: 0.060, speed: 8, glow: true, da: 1.0, db: 0.5, pRGB: [0,255,255], bRGB: [26,26,46] };
+const p = { f: 0.037, k: 0.060, speed: 8, glow: true, da: 1.0, db: 0.5, pRGB: [0,255,255], bRGB: [26,26,46], gx:0, gy:0 };
 const presets = { mitosis: { f: 0.036, k: 0.064 }, coral: { f: 0.054, k: 0.062 }, spirals: { f: 0.018, k: 0.051 } };
 const colorPresets = { psy1: { p: "#ff00ff", b: "#ccff00" }, cool1: { p: "#00ffff", b: "#000033" }, chic1: { p: "#d4af37", b: "#222222" } };
 const hexToRgb = h => h.match(/[A-Za-z0-9]{2}/g).map(v => parseInt(v, 16));
@@ -67,14 +72,11 @@ const getIdx = (x, y) => ((x + W) % W) + ((y + H) % H) * W;
 function resetParam(id, val) { document.getElementById(id).value = val; if(id==='f'||id==='k') document.getElementById('preset').value='manual'; syncUI(); }
 
 function updateMask() {
-    const mCanvas = document.createElement('canvas');
-    mCanvas.width = W; mCanvas.height = H;
+    const mCanvas = document.createElement('canvas'); mCanvas.width = W; mCanvas.height = H;
     const mCtx = mCanvas.getContext('2d');
-    mCtx.fillStyle="black"; mCtx.fillRect(0,0,W,H);
-    mCtx.fillStyle="white";
+    mCtx.fillStyle="black"; mCtx.fillRect(0,0,W,H); mCtx.fillStyle="white";
     const type = document.getElementById('shape').value;
     document.getElementById('meta-rand').style.display = (type === 'metaball') ? 'block' : 'none';
-    
     if (type === 'circle') { mCtx.beginPath(); mCtx.arc(W/2, H/2, W/2.5, 0, Math.PI*2); mCtx.fill(); }
     else if (type === 'square') mCtx.fillRect(30, 30, W-60, H-60);
     else if (type === 'horse') { mCtx.font = "bold 140px sans-serif"; mCtx.textAlign="center"; mCtx.textBaseline="middle"; mCtx.fillText('🐎', W/2, H/2+10); }
@@ -92,14 +94,87 @@ function updateMask() {
 
 const handleInput = (e) => {
     const r = canvas.getBoundingClientRect(), 
-          mx = Math.floor(((e.clientX || e.touches[0].clientX) - r.left) / r.width * W), 
-          my = Math.floor(((e.clientY || e.touches[0].clientY) - r.top) / r.height * H);
+          mx = Math.floor(((e.clientX || (e.touches && e.touches[0].clientX)) - r.left) / r.width * W), 
+          my = Math.floor(((e.clientY || (e.touches && e.touches[0].clientY)) - r.top) / r.height * H);
     for(let y=-5; y<=5; y++) for(let x=-5; x<=5; x++) {
         const d = Math.sqrt(x*x + y*y), idx = getIdx(mx+x, my+y);
-        if(d < 5 && mask[idx] > 0.1) gridB[idx] += (1 - d/5) * 0.8;
+        if(d < 5 && mask[idx] > 0.1) gridB[idx] = 0.9;
     }
     if(!running) draw();
 };
+canvas.addEventListener('pointerdown', handleInput);
+canvas.addEventListener('pointermove', (e) => { if(e.buttons > 0 || (e.touches && e.touches.length > 0)) handleInput(e); });
+
+// Gravity feature
+window.addEventListener('deviceorientation', (e) => {
+    if(!document.getElementById('gravity').checked) { p.gx = 0; p.gy = 0; return; }
+    p.gx = Math.min(1, Math.max(-1, e.gamma / 30));
+    p.gy = Math.min(1, Math.max(-1, e.beta / 30));
+});
+
+function step() {
+    const f = p.f, k = p.k, da = p.da, db = p.db, gx = p.gx, gy = p.gy;
+    for(let i=0; i<W*H; i++) {
+        const m = mask[i]; if(m < 0.01) { nextA[i]=1; nextB[i]=0; continue; }
+        const x = i % W, y = (i / W) | 0, a = gridA[i], b = gridB[i], abb = a * b * b;
+        
+        // Laplacian with Gravity offset
+        const lapA = (gridA[getIdx(x-1,y)]*0.2 + gridA[getIdx(x+1,y)]*0.2 + gridA[getIdx(x,y-1)]*0.2 + gridA[getIdx(x,y+1)]*0.2 + gridA[getIdx(x-1,y-1)]*0.05 + gridA[getIdx(x+1,y-1)]*0.05 + gridA[getIdx(x-1,y+1)]*0.05 + gridA[getIdx(x+1,y+1)]*0.05 - a)
+                     + (gridA[getIdx(x - Math.round(gx), y - Math.round(gy))] - a) * 0.1; // Simple gravity drift
+        const lapB = (gridB[getIdx(x-1,y)]*0.2 + gridB[getIdx(x+1,y)]*0.2 + gridB[getIdx(x,y-1)]*0.2 + gridB[getIdx(x,y+1)]*0.2 + gridB[getIdx(x-1,y-1)]*0.05 + gridB[getIdx(x+1,y-1)]*0.05 + gridB[getIdx(x-1,y+1)]*0.05 + gridB[getIdx(x+1,y+1)]*0.05 - b)
+                     + (gridB[getIdx(x - Math.round(gx), y - Math.round(gy))] - b) * 0.1;
+
+        nextA[i] = Math.max(0, Math.min(1, a + (da * lapA - abb + f * (1 - a)) * m));
+        nextB[i] = Math.max(0, Math.min(1, b + (db * lapB + abb - (k + f) * b) * m));
+    }
+    gridA.set(nextA); gridB.set(nextB);
+}
+
+function draw() {
+    const img = ctx.createImageData(W, H);
+    const pR = p.pRGB[0], pG = p.pRGB[1], pB = p.pRGB[2], bR = p.bRGB[0], bG = p.bRGB[1], bB = p.bRGB[2];
+    for(let i=0; i<W*H; i++) {
+        const px = i * 4, m = mask[i], val = Math.max(0, 1 - (gridA[i] - gridB[i])), bVal = gridB[i];
+        let glow = p.glow ? bVal * 1.5 : 0;
+        let r = pR * val + bR * (1 - val) + glow * 100, g = pG * val + bG * (1 - val) + glow * 100, b = pB * val + bB * (1 - val) + glow * 100;
+        img.data[px] = r * m + bR * (1 - m); img.data[px+1] = g * m + bG * (1 - m); img.data[px+2] = b * m + bB * (1 - m); img.data[px+3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+}
+
+function syncUI() {
+    const pSel = document.getElementById('preset').value, cSel = document.getElementById('c-mode').value;
+    if(pSel !== 'manual') { document.getElementById('f').value = p.f = presets[pSel].f; document.getElementById('k').value = p.k = presets[pSel].k; }
+    else { p.f = parseFloat(document.getElementById('f').value); p.k = parseFloat(document.getElementById('k').value); }
+    document.getElementById('f').disabled = document.getElementById('k').disabled = (pSel !== 'manual');
+    const isCPre = (cSel === 'preset');
+    document.getElementById('c-preset-wrap').style.display = isCPre ? 'block' : 'none';
+    document.getElementById('c-manual-wrap').style.display = isCPre ? 'none' : 'block';
+    let pCol = isCPre ? colorPresets[document.getElementById('c-preset').value].p : document.getElementById('p-col').value;
+    let bCol = isCPre ? colorPresets[document.getElementById('c-preset').value].b : document.getElementById('bg-col').value;
+    p.pRGB = hexToRgb(pCol); p.bRGB = hexToRgb(bCol);
+    const sc = parseFloat(document.getElementById('scale').value);
+    p.da = sc; p.db = 0.5 * sc; p.speed = parseInt(document.getElementById('speed').value); p.glow = document.getElementById('glow').checked;
+    
+    document.getElementById('fv').innerText = p.f.toFixed(3);
+    document.getElementById('kv').innerText = p.k.toFixed(3);
+    document.getElementById('sv').innerText = p.speed;
+    document.getElementById('sv_scale').innerText = sc.toFixed(1);
+}
+
+function loop() { if(running) { syncUI(); for(let i=0; i<p.speed; i++) step(); draw(); } else { syncUI(); draw(); } requestAnimationFrame(loop); }
+document.getElementById('reset').onclick = () => { gridA.fill(1); gridB.fill(0); draw(); };
+document.getElementById('start').onclick = () => { running = !running; };
+document.getElementById('save').onclick = () => {
+    const link = document.createElement('a'); link.download = 'rd_pattern.png';
+    link.href = canvas.toDataURL(); link.click();
+};
+document.getElementById('shape').onchange = updateMask;
+document.getElementById('meta-rand').onclick = updateMask;
+updateMask(); loop();
+</script>
+</body>
+</html>
 canvas.addEventListener('pointerdown', handleInput);
 canvas.addEventListener('pointermove', (e) => { if(e.buttons > 0) handleInput(e); });
 
