@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>RD Sandbox</title>
+    <style>
+        body { margin: 0; background: #111; color: #eee; font-family: sans-serif; overflow: hidden; display: flex; }
+        canvas { background: #000; cursor: crosshair; }
+        #ui { padding: 10px; width: 250px; height: 100vh; overflow-y: auto; background: #222; }
+        .ctrl { margin-bottom: 10px; }
+        label { display: block; font-size: 12px; }
+        input { width: 100%; }
+        button { width: 100%; padding: 5px; margin-top: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div class="ctrl"><label>Shape</label>
+            <select id="shape">
+                <option value="circle">Circle</option>
+                <option value="square">Square</option>
+                <option value="horse">Horse</option>
+                <option value="metaball">Metaballs</option>
+            </select>
+        </div>
+        <div class="ctrl"><label>Feed (f)</label><input type="range" id="f" min="0.01" max="0.1" step="0.001" value="0.055"></div>
+        <div class="ctrl"><label>Kill (k)</label><input type="range" id="k" min="0.01" max="0.1" step="0.001" value="0.062"></div>
+        <div class="ctrl"><label>Speed</label><input type="range" id="speed" min="1" max="20" step="1" value="8"></div>
+        <div class="ctrl"><label>Color Hue</label><input type="range" id="hue" min="0" max="360" step="1" value="200"></div>
+        <button id="reset">Clear & Reset</button>
+        <button id="start">Start / Pause</button>
+        <p style="font-size:10px">Tap canvas to seed points.<br>Change shape resets seeds.</p>
+    </div>
+    <canvas id="cvs"></canvas>
+
+<script>
+const W = 200, H = 200;
+const canvas = document.getElementById('cvs');
+const ctx = canvas.getContext('2d');
+canvas.width = W; canvas.height = H;
+canvas.style.width = 'min(90vh, 90vw)';
+canvas.style.height = 'min(90vh, 90vw)';
+
+let gridA = new Float32Array(W * H).fill(1);
+let gridB = new Float32Array(W * H).fill(0);
+let nextA = new Float32Array(W * H);
+let nextB = new Float32Array(W * H);
+let mask = new Uint8Array(W * H).fill(1);
+
+let running = false;
+const params = { f: 0.055, k: 0.062, speed: 8, hue: 200, da: 1.0, db: 0.5 };
+
+const getIdx = (x, y) => (x + W) % W + ((y + H) % H) * W;
+
+function updateMask() {
+    mask.fill(0);
+    const type = document.getElementById('shape').value;
+    const mCtx = Object.assign(document.createElement('canvas'), {width: W, height: H}).getContext('2d');
+    mCtx.fillStyle = "white";
+    
+    if (type === 'circle') {
+        mCtx.beginPath(); mCtx.arc(W/2, H/2, W/2.2, 0, Math.PI*2); mCtx.fill();
+    } else if (type === 'square') {
+        mCtx.fillRect(10, 10, W-20, H-20);
+    } else if (type === 'horse') {
+        mCtx.font = `${W}px serif`; mCtx.textAlign = "center"; mCtx.textBaseline = "middle";
+        mCtx.fillText('🐎', W/2, H/2);
+    } else if (type === 'metaball') {
+        const balls = Array.from({length: 5}, () => ({x: Math.random()*W, y: Math.random()*H, r: 20+Math.random()*30}));
+        for(let y=0; y<H; y++) for(let x=0; x<W; x++) {
+            let val = 0;
+            balls.forEach(b => val += (b.r*b.r) / (Math.pow(x-b.x, 2) + Math.pow(y-b.y, 2)));
+            if (val > 1) mCtx.fillRect(x, y, 1, 1);
+        }
+    }
+    const data = mCtx.getImageData(0,0,W,H).data;
+    for(let i=0; i<W*H; i++) mask[i] = data[i*4] > 0 ? 1 : 0;
+    resetSim();
+}
+
+function resetSim() {
+    gridA.fill(1); gridB.fill(0);
+}
+
+canvas.addEventListener('mousedown', e => {
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left) / rect.width * W);
+    const y = Math.floor((e.clientY - rect.top) / rect.height * H);
+    for(let i=-2; i<=2; i++) for(let j=-2; j<=2; j++) {
+        let idx = getIdx(x+i, y+j);
+        if(mask[idx]) gridB[idx] = 1;
+    }
+    draw();
+});
+
+function step() {
+    for(let y=0; y<H; y++) {
+        for(let x=0; x<W; x++) {
+            const i = x + y * W;
+            if(!mask[i]) { nextA[i]=1; nextB[i]=0; continue; }
+            
+            const a = gridA[i], b = gridB[i];
+            const lapA = (
+                gridA[getIdx(x-1,y)] + gridA[getIdx(x+1,y)] + gridA[getIdx(x,y-1)] + gridA[getIdx(x,y+1)]
+            ) * 0.2 - a;
+            const lapB = (
+                gridB[getIdx(x-1,y)] + gridB[getIdx(x+1,y)] + gridB[getIdx(x,y-1)] + gridB[getIdx(x,y+1)]
+            ) * 0.2 - b;
+
+            const abb = a * b * b;
+            nextA[i] = a + (params.da * lapA - abb + params.f * (1 - a));
+            nextB[i] = b + (params.db * lapB + abb - (params.k + params.f) * b);
+        }
+    }
+    [gridA, nextA] = [nextA, gridA];
+    [gridB, nextB] = [nextB, gridB];
+}
+
+function draw() {
+    const img = ctx.createImageData(W, H);
+    for(let i=0; i<W*H; i++) {
+        const val = Math.max(0, Math.min(1, gridA[i] - gridB[i]));
+        const c = val * 255;
+        const idx = i * 4;
+        if(!mask[i]) {
+            img.data[idx]=img.data[idx+1]=img.data[idx+2]=20;
+        } else {
+            img.data[idx] = c * (params.hue/360);
+            img.data[idx+1] = c * 0.5;
+            img.data[idx+2] = 255 - c;
+        }
+        img.data[idx+3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+}
+
+function loop() {
+    if(running) {
+        params.f = parseFloat(document.getElementById('f').value);
+        params.k = parseFloat(document.getElementById('k').value);
+        params.speed = parseInt(document.getElementById('speed').value);
+        params.hue = parseInt(document.getElementById('hue').value);
+        for(let i=0; i<params.speed; i++) step();
+    }
+    draw();
+    requestAnimationFrame(loop);
+}
+
+document.getElementById('shape').onchange = updateMask;
+document.getElementById('reset').onclick = resetSim;
+document.getElementById('start').onclick = () => running = !running;
+
+updateMask();
+loop();
+</script>
+</body>
+</html>
