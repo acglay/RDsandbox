@@ -3,43 +3,66 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RD Sandbox v1.0</title>
+    <title>RD Sandbox v1.1</title>
     <style>
         :root { --bg: #000; --ui: #1a1a1a; --accent: #00d4ff; }
         body { margin: 0; background: var(--bg); color: #eee; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
-        /* Canvas & HUD */
-        #canvas-wrap { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; background: #000; }
+        /* Canvas & Centered HUD */
+        #canvas-wrap { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; background: #000; overflow: hidden; }
         canvas { width: 100%; height: 100%; object-fit: contain; touch-action: none; image-rendering: pixelated; }
-        #hud { position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; gap: 12px; }
-        .hud-btn { width: 50px; height: 50px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); background: rgba(20,20,20,0.7); color: white; font-size: 24px; cursor: pointer; backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; }
+        
+        #hud { 
+            position: absolute; 
+            right: 12px; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; 
+            z-index: 50;
+        }
+        .hud-btn { 
+            width: 52px; 
+            height: 52px; 
+            border-radius: 50%; 
+            border: 1px solid rgba(255,255,255,0.2); 
+            background: rgba(30,30,30,0.85); 
+            color: white; 
+            font-size: 26px; 
+            cursor: pointer; 
+            backdrop-filter: blur(8px); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .hud-btn:active { transform: scale(0.9); background: var(--accent); }
         
         /* Hint Toast */
-        #hint { position: absolute; top: 30%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 20px; font-size: 14px; pointer-events: none; opacity: 0; transition: 0.3s; z-index: 100; border: 1px solid var(--accent); }
+        #hint { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); padding: 10px 20px; border-radius: 20px; font-size: 14px; pointer-events: none; opacity: 0; transition: 0.3s; z-index: 100; border: 1px solid var(--accent); }
 
-        /* UI Panel */
-        #ui { background: var(--ui); height: 180px; display: flex; flex-direction: column; border-top: 1px solid #333; }
-        .tabs { display: flex; background: #000; height: 45px; }
-        .tab-btn { flex: 1; border: none; background: transparent; color: #666; font-size: 20px; cursor: pointer; transition: 0.3s; }
+        /* Bottom Tab UI */
+        #ui { background: var(--ui); height: 185px; display: flex; flex-direction: column; border-top: 1px solid #333; z-index: 60; }
+        .tabs { display: flex; background: #000; height: 48px; }
+        .tab-btn { flex: 1; border: none; background: transparent; color: #666; font-size: 22px; cursor: pointer; }
         .tab-btn.active { color: var(--accent); background: var(--ui); box-shadow: inset 0 2px 0 var(--accent); }
         
-        .tab-content { display: none; padding: 15px; flex-grow: 1; overflow-y: hidden; }
+        .tab-content { display: none; padding: 15px; flex-grow: 1; }
         .tab-content.active { display: block; }
 
-        /* Controls */
         .ctrl-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-        .ctrl-row label { width: 30px; font-size: 18px; text-align: center; }
-        input[type="range"] { flex: 1; accent-color: var(--accent); height: 8px; }
+        .ctrl-row label { width: 35px; font-size: 20px; text-align: center; }
+        input[type="range"] { flex: 1; accent-color: var(--accent); height: 10px; }
         .icon-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-        .icon-btn { background: #333; border: 1px solid #444; color: white; padding: 12px; border-radius: 10px; font-size: 22px; cursor: pointer; }
-        .icon-btn:active { background: var(--accent); }
+        .icon-btn { background: #333; border: 1px solid #444; color: white; padding: 12px; border-radius: 12px; font-size: 24px; cursor: pointer; }
 
-        .version { position: absolute; top: 5px; left: 8px; font-size: 10px; color: #444; }
+        .version { position: absolute; top: 8px; left: 10px; font-size: 10px; color: #555; z-index: 10; }
     </style>
 </head>
 <body>
     <div id="canvas-wrap">
-        <div class="version">v1.0</div>
+        <div class="version">v1.1-centered</div>
         <div id="hint">Hint</div>
         <canvas id="cvs"></canvas>
         <div id="hud">
@@ -63,7 +86,7 @@
                 <button class="icon-btn" onclick="shape('horse')">🐎</button>
                 <button class="icon-btn" onclick="shape('metaball')">🎲</button>
             </div>
-            <div class="ctrl-row" style="margin-top:15px">
+            <div class="ctrl-row" style="margin-top:18px">
                 <label>⏩</label><input type="range" id="speed" min="1" max="25" value="8">
             </div>
         </div>
@@ -81,7 +104,7 @@
                 <button class="icon-btn" onclick="toggleGrav()">🌍</button>
                 <button class="icon-btn" onclick="resetSim()">♻️</button>
             </div>
-            <div id="m-cols" class="ctrl-row" style="margin-top:10px">
+            <div class="ctrl-row" style="margin-top:12px">
                 <input type="color" id="p-col" value="#00ffff" style="flex:1">
                 <input type="color" id="bg-col" value="#1a1a2e" style="flex:1">
             </div>
@@ -100,6 +123,88 @@ const hint=(t)=>{const h=document.getElementById('hint');h.innerText=t;h.style.o
 const getI=(x,y)=>((x+W)%W)+((y+H)%H)*W;
 const hex=(h)=>h.match(/[A-Za-z0-9]{2}/g).map(v=>parseInt(v,16));
 
+function tab(n){
+    document.querySelectorAll('.tab-btn, .tab-content').forEach((el,i)=>el.classList.toggle('active',(i%3)===n));
+    const names=["Shape & Speed","RD Parameters","Colors & FX"]; hint(names[n]);
+}
+
+function toggleSim(){run=!run;document.getElementById('p-btn').innerText=run?"⏸️":"▶️";hint(run?"Start":"Pause")}
+function clearSim(){gA.fill(1);gB.fill(0);draw();hint("Clear Canvas")}
+function shape(s){curS=s;maskU();hint("Shape: "+s)}
+function cycleC(){cIdx=(cIdx+1)%cPre.length;const c=cPre[cIdx];document.getElementById('p-col').value=c.p;document.getElementById('bg-col').value=c.b;hint("Preset: "+c.n)}
+function toggleG(){p.glow=!p.glow;hint("Glow: "+(p.glow?"ON":"OFF"))}
+function toggleGrav(){p.gOn=!p.gOn;hint("Gravity: "+(p.gOn?"ON":"OFF"))}
+function resetSim(){document.getElementById('f').value=0.037;document.getElementById('k').value=0.060;document.getElementById('scale').value=1.0;hint("Params Reset")}
+
+function maskU(){
+    const mc=document.createElement('canvas');mc.width=W;mc.height=H;const mctx=mc.getContext('2d');
+    mctx.fillStyle="black";mctx.fillRect(0,0,W,H);mctx.fillStyle="white";
+    if(curS==='circle'){mctx.beginPath();mctx.arc(W/2,H/2,W/2.5,0,Math.PI*2);mctx.fill()}
+    else if(curS==='square'){mctx.fillRect(30,30,W-60,H-60)}
+    else if(curS==='horse'){mctx.font="bold 130px sans-serif";mctx.textAlign="center";mctx.textBaseline="middle";mctx.fillText('🐎',W/2,H/2+10)}
+    else if(curS==='metaball'){
+        const balls=Array.from({length:5},()=>({x:40+Math.random()*(W-80),y:40+Math.random()*(H-80),r:20+Math.random()*25}));
+        for(let y=0;y<H;y++)for(let x=0;x<W;x++){let v=0;balls.forEach(b=>v+=(b.r*b.r)/(Math.pow(x-b.x,2)+Math.pow(y-b.y,2)));if(v>1.0)mctx.fillRect(x,y,1,1)}
+    }
+    const d=mctx.getImageData(0,0,W,H).data;for(let i=0;i<W*H;i++)mask[i]=d[i*4]/255.0;
+    gA.fill(1);gB.fill(0);draw();
+}
+
+const input=(e)=>{
+    const r=cvs.getBoundingClientRect();
+    const cx=(e.clientX||(e.touches&&e.touches[0].clientX)), cy=(e.clientY||(e.touches&&e.touches[0].clientY));
+    const mx=Math.floor((cx-r.left)/r.width*W), my=Math.floor((cy-r.top)/r.height*H);
+    for(let y=-4;y<=4;y++)for(let x=-4;x<=4;x++){const d=Math.sqrt(x*x+y*y),idx=getI(mx+x,my+y);if(d<4&&mask[idx]>0.1)gB[idx]=0.8}
+    if(!run)draw();
+};
+cvs.addEventListener('pointerdown',input);
+cvs.addEventListener('pointermove',(e)=>{if(e.buttons>0||e.touches)input(e)});
+
+window.addEventListener('deviceorientation',(e)=>{if(!p.gOn){p.gx=0;p.gy=0;return}p.gx=Math.min(1.5,Math.max(-1.5,e.gamma/20));p.gy=Math.min(1.5,Math.max(-1.5,e.beta/20))});
+
+function step(){
+    const f=p.f,k=p.k,da=p.sc,db=p.sc*0.5,gx=Math.round(p.gx),gy=Math.round(p.gy);
+    for(let i=0;i<W*H;i++){
+        const m=mask[i];if(m<0.01){nA[i]=1;nB[i]=0;continue}
+        const x=i%W,y=(i/W)|0,a=gA[i],b=gB[i],abb=a*b*b;
+        const lA=(gA[getI(x-1,y)]*0.2+gA[getI(x+1,y)]*0.2+gA[getI(x,y-1)]*0.2+gA[getI(x,y+1)]*0.2+gA[getI(x-1,y-1)]*0.05+gA[getI(x+1,y-1)]*0.05+gA[getI(x-1,y+1)]*0.05+gA[getI(x+1,y+1)]*0.05-a)+(gA[getI(x-gx,y-gy)]-a)*0.1;
+        const lB=(gB[getI(x-1,y)]*0.2+gB[getI(x+1,y)]*0.2+gB[getI(x,y-1)]*0.2+gB[getI(x,y+1)]*0.2+gB[getI(x-1,y-1)]*0.05+gB[getI(x+1,y-1)]*0.05+gB[getI(x-1,y+1)]*0.05+gB[getI(x+1,y+1)]*0.05-b)+(gB[getI(x-gx,y-gy)]-b)*0.1;
+        nA[i]=Math.max(0,Math.min(1,a+(da*lA-abb+f*(1-a))*m));nB[i]=Math.max(0,Math.min(1,b+(db*lB+abb-(k+f)*b)*m));
+    }
+    gA.set(nA);gB.set(nB);
+}
+
+function draw(){
+    const img=ctx.createImageData(W,H);
+    const pR=p.pRGB[0],pG=p.pRGB[1],pB=p.pRGB[2],bR=p.bRGB[0],bG=p.bRGB[1],bB=p.bRGB[2];
+    for(let i=0;i<W*H;i++){
+        const px=i*4,m=mask[i],v=Math.max(0,1-(gA[i]-gB[i])),bV=gB[i];
+        let glow=p.glow?bV*1.5:0;
+        let r=pR*v+bR*(1-v)+glow*100,gr=pG*v+bG*(1-v)+glow*100,bl=pB*v+bB*(1-v)+glow*100;
+        img.data[px]=r*m+bR*(1-m);img.data[px+1]=gr*m+bG*(1-m);img.data[px+2]=bl*m+bB*(1-m);img.data[px+3]=255;
+    }
+    ctx.putImageData(img,0,0);
+}
+
+function saveImg(){
+    hint("📸 Saving Image...");
+    const link=document.createElement('a');
+    link.download=`RD_Pattern_${Date.now()}.png`;
+    link.href=cvs.toDataURL('image/png');
+    link.click();
+}
+
+function loop(){
+    p.f=parseFloat(document.getElementById('f').value);p.k=parseFloat(document.getElementById('k').value);
+    p.sc=parseFloat(document.getElementById('scale').value);p.sp=parseInt(document.getElementById('speed').value);
+    p.pRGB=hex(document.getElementById('p-col').value);p.bRGB=hex(document.getElementById('bg-col').value);
+    if(run){for(let i=0;i<p.sp;i++)step();draw()}
+    requestAnimationFrame(loop);
+}
+maskU();loop();
+</script>
+</body>
+</html>
 function tab(n){
     document.querySelectorAll('.tab-btn, .tab-content').forEach((el,i)=>el.classList.toggle('active',(i%3)===n));
     const names=["Shape","RD Params","Colors"]; hint(names[n]);
