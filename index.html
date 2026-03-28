@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-    <title>RD Sandbox v2.7 Master</title>
+    <title>RD Sandbox v2.8 Master</title>
     <style>
         :root { --bg: #000; --ui: #151515; --acc: #00d4ff; }
         body { margin: 0; background: var(--bg); color: #eee; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
@@ -15,48 +15,50 @@
             background: transparent; border: 1px solid #222; 
         }
         
-        #hud { position: absolute; right: calc(50% - 47.5vmin + 10px); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 100; }
+        /* 3/4 Scaled HUD */
+        #hud { position: absolute; right: calc(50% - 47.5vmin + 8px); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 6px; z-index: 100; }
         .hud-btn { 
-            width: 44px; height: 44px; border-radius: 10px; border: 1px solid #444; 
-            background: rgba(25, 25, 25, 0.9); color: #fff; font-size: 20px; 
+            width: 33px; height: 33px; border-radius: 8px; border: 1px solid #444; 
+            background: rgba(25, 25, 25, 0.9); color: #fff; font-size: 16px; 
             display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); transition: 0.2s;
         }
-        .hud-btn.active { background: var(--acc); color: #000; border-color: #fff; box-shadow: 0 0 15px rgba(0,212,255,0.6); }
+        .hud-btn.active { background: var(--acc); color: #000; border-color: #fff; box-shadow: 0 0 10px rgba(0,212,255,0.5); }
+
+        /* Square Picker in HUD */
+        .hud-picker { 
+            -webkit-appearance: none; width: 33px; height: 33px; border: 1px solid #444; 
+            background: none; cursor: pointer; padding: 0; border-radius: 8px;
+        }
+        .hud-picker::-webkit-color-swatch-wrapper { padding: 0; }
+        .hud-picker::-webkit-color-swatch { border: none; border-radius: 7px; }
 
         #hint { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); padding: 8px 16px; border-radius: 20px; font-size: 11px; opacity: 0; transition: 0.3s; pointer-events: none; border: 1px solid var(--acc); z-index: 200; white-space: nowrap; }
 
-        #ui { background: var(--ui); padding: 12px 15px 40px 15px; border-top: 1px solid #333; z-index: 150; box-sizing: border-box; overflow-y: auto; }
+        #ui { background: var(--ui); padding: 12px 15px 45px 15px; border-top: 1px solid #333; z-index: 150; box-sizing: border-box; overflow-y: auto; }
         .sliders { display: flex; flex-direction: column; gap: 6px; }
         .row { display: flex; align-items: center; gap: 8px; font-size: 10px; }
         .row label { width: 55px; color: #777; font-weight: bold; }
         input[type="range"] { flex: 1; accent-color: var(--acc); height: 18px; cursor: pointer; }
-        
-        /* Square Color Pickers */
-        .color-row { display: flex; gap: 10px; justify-content: flex-start; margin-top: 5px; }
-        input[type="color"] { 
-            -webkit-appearance: none; width: 44px; height: 44px; border: 1px solid #444; 
-            background: none; cursor: pointer; padding: 0; border-radius: 6px;
-        }
-        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 5px; }
-
         .val { color: var(--acc); min-width: 40px; text-align: right; font-family: monospace; font-size: 11px; }
-        .res-btn { background: #222; border: none; color: #555; font-size: 13px; padding: 0 6px; cursor: pointer; border-radius: 4px; }
+        .res-btn { background: #222; border: none; color: #555; font-size: 12px; padding: 0 5px; cursor: pointer; border-radius: 4px; }
 
         .v { position: absolute; top: 5px; left: 10px; font-size: 10px; color: #333; letter-spacing: 1px; }
     </style>
 </head>
 <body>
     <div id="canvas-wrap">
-        <div class="v">ver 2.7 MASTER</div><div id="hint"></div>
+        <div class="v">ver 2.8 MASTER</div><div id="hint"></div>
         <canvas id="cvs"></canvas>
         <div id="hud">
             <button class="hud-btn active" id="p-btn" onclick="tglR()">⏸️</button>
             <button class="hud-btn" id="s-btn" onclick="cycS()">⬜</button>
             <button class="hud-btn" id="rd-btn" onclick="cycRD()">🦠</button>
-            <button class="hud-btn" onclick="cycC()">🌈</button>
+            <button class="hud-btn" id="col-pre" onclick="cycC()">🌈</button>
+            <input type="color" id="pc" class="hud-picker" value="#ffffff" title="Pattern">
+            <input type="color" id="bc" class="hud-picker" value="#002200" title="Background">
             <button class="hud-btn active" onclick="tglG()" id="g-btn">✨</button>
             <button class="hud-btn active" onclick="tglT()" id="t-btn">🫥</button>
+            <button class="hud-btn active" onclick="tglAuto()" id="a-btn">🌱</button>
             <button class="hud-btn" onclick="clr()">🔄</button>
             <button class="hud-btn" onclick="sv()">📸</button>
         </div>
@@ -66,17 +68,11 @@
         <div class="sliders">
             <div class="row"><label>Speed</label><input type="range" id="sp" min="0" max="100" value="25"><span class="val" id="v-sp"></span><button class="res-btn" onclick="rstP('sp',25)">↺</button></div>
             <div class="row"><label>Scale</label><input type="range" id="sc" min="0.1" max="1.0" step="0.05" value="0.50"><span class="val" id="v-sc"></span><button class="res-btn" onclick="rstP('sc',0.50)">↺</button></div>
-            <div class="row"><label>Offset</label><input type="range" id="off" min="-0.5" max="0.5" step="0.01" value="0.0"><span class="val" id="v-off"></span><button class="res-btn" onclick="rstP('off',0.0)">↺</button></div>
+            <div class="row"><label>Offset</label><input type="range" id="off" min="-0.6" max="0.6" step="0.01" value="0.00" oninput="autoPostProcess(this.value)"><span class="val" id="v-off"></span><button class="res-btn" onclick="rstP('off',0.0);autoPostProcess(0)">↺</button></div>
             <div class="row"><label>Mult</label><input type="range" id="mul" min="0.1" max="5.0" step="0.1" value="1.0"><span class="val" id="v-mul"></span><button class="res-btn" onclick="rstP('mul',1.0)">↺</button></div>
-            <div class="row"><label>Gamma</label><input type="range" id="gam" min="0.1" max="3.0" step="0.05" value="0.5"><span class="val" id="v-gam"></span><button class="res-btn" onclick="rstP('gam',0.5)">↺</button></div>
+            <div class="row"><label>Gamma</label><input type="range" id="gam" min="0.1" max="4.0" step="0.05" value="1.00"><span class="val" id="v-gam"></span><button class="res-btn" onclick="rstP('gam',1.0)">↺</button></div>
             <div class="row"><label>Feed</label><input type="range" id="f" min="0.01" max="0.1" step="0.001" value="0.037"><span class="val" id="v-f"></span><button class="res-btn" onclick="rstP('f',0.037)">↺</button></div>
             <div class="row"><label>Kill</label><input type="range" id="k" min="0.01" max="0.1" step="0.001" value="0.060"><span class="val" id="v-k"></span><button class="res-btn" onclick="rstP('k',0.060)">↺</button></div>
-            
-            <div class="color-row">
-                <input type="color" id="pc" value="#ffffff" title="Pattern Color">
-                <input type="color" id="bc" value="#002200" title="Background Color">
-                <span style="color:#444; font-size:9px; align-self:center;">← Pattern / Background</span>
-            </div>
         </div>
     </div>
 
@@ -85,7 +81,7 @@ const W=200,H=200,cvs=document.getElementById('cvs'),ctx=cvs.getContext('2d',{al
 cvs.width=W; cvs.height=H;
 
 let gA=new Float32Array(W*H).fill(1), gB=new Float32Array(W*H).fill(0), nA=new Float32Array(W*H), nB=new Float32Array(W*H), mask=new Float32Array(W*H).fill(1);
-let run=true, cI=4, sI=0, rdI=0, isT=true; 
+let run=true, cI=4, sI=0, rdI=0, isT=true, isAuto=true; 
 
 const shapes = ['square', 'metaball', 'circle'];
 const sIcons = ['⬜', '🎲', '⭕'];
@@ -100,20 +96,41 @@ const cP=[
     {p:"#ffffff",b:"#002200",n:"Forest"},{p:"#ff4400",b:"#110500",n:"Magma"}
 ];
 
-const p={f:0.037, k:0.060, sp:25, glow:true, sc:0.5, off:0.0, mul:1.0, gam:0.5, pRGB:[255,255,255], bRGB:[0,34,0]};
+const p={f:0.037, k:0.060, sp:25, glow:true, sc:0.5, off:0.0, mul:1.0, gam:1.0, pRGB:[255,255,255], bRGB:[0,34,0]};
 
 const hnt=(t)=>{const h=document.getElementById('hint');h.innerText=t;h.style.opacity=1;setTimeout(()=>h.style.opacity=0,1000)};
 const getI=(x,y)=>((x+W)%W)+((y+H)%H)*W;
 const hex=(h)=>h.match(/[A-Za-z0-9]{2}/g).map(v=>parseInt(v,16));
 
 function tglR(){run=!run;document.getElementById('p-btn').innerText=run?"⏸️":"▶️";document.getElementById('p-btn').classList.toggle('active',run);hnt(run?"Run":"Pause")}
-function clr(){gA.fill(1);gB.fill(0);drw();hnt("Clear")}
-function tglT(){isT=!isT;document.getElementById('t-btn').classList.toggle('active',isT);drw();hnt(isT?"Transparency ON":"Transparency OFF")}
+function clr(){gA.fill(1);gB.fill(0);if(isAuto)scatterSeeds();drw();hnt("Clear & Seed")}
+function tglT(){isT=!isT;document.getElementById('t-btn').classList.toggle('active',isT);drw();hnt(isT?"Transparent ON":"OFF")}
+function tglAuto(){isAuto=!isAuto;document.getElementById('a-btn').classList.toggle('active',isAuto);hnt(isAuto?"Auto-Seed ON":"OFF")}
+
+// PostProcess Linear Interpolation Logic
+function autoPostProcess(val) {
+    const o = parseFloat(val);
+    let targetM = 1.0, targetG = 1.0;
+    
+    if (o < 0) {
+        // Map [-0.5, 0.0] -> Mult [1.5, 1.0], Gamma [3.0, 1.0]
+        const t = Math.min(1, Math.max(0, (o - (-0.5)) / 0.5)); 
+        targetM = 1.5 + (1.0 - 1.5) * t;
+        targetG = 3.0 + (1.0 - 3.0) * t;
+    } else {
+        // Map [0.0, 0.5] -> Mult [1.0, 0.8], Gamma [1.0, 1.45]
+        const t = Math.min(1, Math.max(0, (o - 0.0) / 0.5));
+        targetM = 1.0 + (0.8 - 1.0) * t;
+        targetG = 1.0 + (1.45 - 1.0) * t;
+    }
+    document.getElementById('mul').value = targetM.toFixed(2);
+    document.getElementById('gam').value = targetG.toFixed(2);
+}
 
 function cycS(){
     sI = (sI + 1) % shapes.length;
     document.getElementById('s-btn').innerText = sIcons[sI];
-    mU(); hnt("Seed Shape: " + shapes[sI]);
+    mU(); hnt("Seed: " + shapes[sI]);
 }
 
 function cycRD(){
@@ -122,6 +139,7 @@ function cycRD(){
     document.getElementById('f').value = pr.f;
     document.getElementById('k').value = pr.k;
     document.getElementById('rd-btn').innerText = pr.e;
+    if(isAuto) scatterSeeds();
     hnt(pr.n);
 }
 
@@ -133,82 +151,78 @@ function cycC(){
 }
 
 function tglG(){p.glow=!p.glow; document.getElementById('g-btn').classList.toggle('active', p.glow); hnt("Glow: "+(p.glow?"ON":"OFF"))}
-function rstP(id, val){ document.getElementById(id).value = val; hnt("Reset "+id); }
+function rstP(id, val){ document.getElementById(id).value = val; hnt("Reset"); }
 
 function sv(){
-    hnt("📸 Saving High-Quality PNG...");
     const link=document.createElement('a');
     link.download=`RD_Capture_${Date.now()}.png`;
     link.href=cvs.toDataURL('image/png');
     link.click();
 }
 
+function scatterSeeds() {
+    gB.fill(0); gA.fill(1);
+    const count = 5 + Math.floor(Math.random()*6);
+    for(let k=0; k<count; k++){
+        const rx = 30 + Math.random()*140, ry = 30 + Math.random()*140;
+        const br = 5;
+        for(let y=-br;y<=br;y++)for(let x=-br;x<=br;x++){
+            if(x*x+y*y < br*br){
+                const idx = getI(Math.floor(rx+x), Math.floor(ry+y));
+                if(mask[idx]>0.1) gB[idx] = 0.8;
+            }
+        }
+    }
+}
+
 function mU(){
     const mc=document.createElement('canvas'); mc.width=W; mc.height=H;
     const mctx=mc.getContext('2d');
     mctx.fillStyle="#000"; mctx.fillRect(0,0,W,H);
-    
     const curS = shapes[sI];
     const tempC = document.createElement('canvas'); tempC.width=W; tempC.height=H;
-    const tctx = tempC.getContext('2d');
-    tctx.fillStyle="#fff";
+    const tctx = tempC.getContext('2d'); tctx.fillStyle="#fff";
 
     if(curS==='square'){
         tctx.fillRect(25,25,W-50,H-50);
     } else if(curS==='circle'){
         tctx.beginPath(); tctx.arc(W/2, H/2, 98, 0, Math.PI*2); tctx.fill();
     } else {
-        // Spine Cross Algorithm
         const cross = Math.random() > 0.5;
         const startX = -10, startY = 20 + Math.random()*160;
         const endX = 210, endY = 20 + Math.random()*160;
-        // Flip control points to force cross
         const cp1X = cross ? 180 : 40, cp1Y = cross ? 180 : 40;
         const cp2X = cross ? 20 : 160, cp2Y = cross ? 20 : 160;
-
         const getBezier = (t) => ({
             x: (1-t)**3*startX + 3*(1-t)**2*t*cp1X + 3*(1-t)*t**2*cp2X + t**3*endX,
             y: (1-t)**3*startY + 3*(1-t)**2*t*cp1Y + 3*(1-t)*t**2*cp2Y + t**3*endY
         });
-
-        const mainSeeds = [];
         for(let i=0; i<=8; i++){
             const pos = getBezier(i/8);
             const r = 16 + Math.random()*10;
-            mainSeeds.push({x:pos.x, y:pos.y, r:r});
             tctx.beginPath(); tctx.arc(pos.x, pos.y, r, 0, Math.PI*2); tctx.fill();
-        }
-        mainSeeds.forEach(s => {
-            for(let j=0; j<3; j++){
+            for(let j=0; j<2; j++){
                 const ang = Math.random()*Math.PI*2;
-                const rx = s.x + Math.cos(ang)*s.r;
-                const ry = s.y + Math.sin(ang)*s.r;
-                tctx.beginPath(); tctx.arc(rx, ry, 6 + Math.random()*8, 0, Math.PI*2); tctx.fill();
+                tctx.beginPath(); tctx.arc(pos.x+Math.cos(ang)*r, pos.y+Math.sin(ang)*r, 6+Math.random()*6, 0, Math.PI*2); tctx.fill();
             }
-        });
+        }
     }
-
-    // Edge Sharpness Control: Minimized blur for AA-only effect
-    mctx.filter = "blur(0.8px)"; 
-    mctx.drawImage(tempC, 0, 0);
-    
+    mctx.filter = "blur(0.8px)"; mctx.drawImage(tempC, 0, 0);
     const d=mctx.getImageData(0,0,W,H).data;
     for(let i=0; i<W*H; i++) mask[i]=d[i*4]/255;
-    gA.fill(1); gB.fill(0);
+    if(isAuto) scatterSeeds();
 }
 
 const ipt=(e)=>{
     const r=cvs.getBoundingClientRect();
-    const cx=(e.clientX || (e.touches && e.touches[0].clientX));
-    const cy=(e.clientY || (e.touches && e.touches[0].clientY));
+    const cx=(e.clientX || (e.touches && e.touches[0].clientX)), cy=(e.clientY || (e.touches && e.touches[0].clientY));
     if(cx === undefined) return;
     const mx=Math.floor((cx-r.left)/r.width*W), my=Math.floor((cy-r.top)/r.height*H);
-    const brushR = 6;
-    for(let y=-brushR;y<=brushR;y++)for(let x=-brushR;x<=brushR;x++){
-        const dsq = x*x+y*y;
-        if(dsq < brushR*brushR){
+    const br = 6;
+    for(let y=-br;y<=br;y++)for(let x=-br;x<=br;x++){
+        if(x*x+y*y < br*br){
             const i=getI(mx+x,my+y);
-            const soft = (1.0 - Math.sqrt(dsq)/brushR);
+            const soft = (1.0 - Math.sqrt(x*x+y*y)/br);
             if(mask[i]>0.1) gB[i] = Math.max(gB[i], 0.85 * soft);
         }
     }
@@ -232,21 +246,16 @@ function stp(){
 
 function drw(){
     const d=ctx.createImageData(W,H),pR=p.pRGB[0],pG=p.pRGB[1],pB=p.pRGB[2],bR=p.bRGB[0],bG=p.bRGB[1],bB=p.bRGB[2];
-    const offset = p.off, mult = p.mul, gamma = p.gam;
+    const off = p.off, mul = p.mul, gam = p.gam;
     for(let i=0;i<W*H;i++){
         const px=i*4,m=mask[i];
-        
-        let v = ((1 - (gA[i] - gB[i])) * mult) + offset;
+        let v = ((1 - (gA[i] - gB[i])) * mul) + off;
         v = Math.max(0, Math.min(1, v));
-        if(v > 0) v = Math.pow(v, gamma);
-        
+        if(v > 0) v = Math.pow(v, gam);
         const bV=gB[i], gl=p.glow?bV*2.0:0;
         let r=pR*v+bR*(1-v)+gl*100,g=pG*v+bG*(1-v)+gl*100,b=pB*v+bB*(1-v)+gl*100;
-        
         const alpha = isT ? Math.min(255, (v*255 + bV*255) * m) : 255;
-        // Sharper Edges for non-transparency mode
         const edge = (!isT && m > 0 && m < 0.98) ? 8 : 0;
-        
         d.data[px]=(r+edge)*m + (isT ? 0 : bR*(1-m)) + edge; 
         d.data[px+1]=(g+edge)*m + (isT ? 0 : bG*(1-m)) + edge; 
         d.data[px+2]=(b+edge)*m + (isT ? 0 : bB*(1-m)) + edge; 
@@ -261,31 +270,15 @@ function lp(){
     p.off=parseFloat(document.getElementById('off').value); p.mul=parseFloat(document.getElementById('mul').value);
     p.gam=parseFloat(document.getElementById('gam').value);
     p.pRGB=hex(document.getElementById('pc').value); p.bRGB=hex(document.getElementById('bc').value);
-    
     document.getElementById('v-f').innerText=p.f.toFixed(3); document.getElementById('v-k').innerText=p.k.toFixed(3);
     document.getElementById('v-sc').innerText=p.sc.toFixed(2); document.getElementById('v-sp').innerText=p.sp;
     document.getElementById('v-off').innerText=(p.off > 0 ? "+" : "") + p.off.toFixed(2);
-    document.getElementById('v-mul').innerText="x"+p.mul.toFixed(1);
-    document.getElementById('v-gam').innerText=p.gam.toFixed(2);
-    
-    if(run && p.sp > 0){for(let i=0;i<p.sp;i++)stp();drw();} else if(!run || p.sp === 0){ drw(); }
+    document.getElementById('v-mul').innerText="x"+p.mul.toFixed(1); document.getElementById('v-gam').innerText=p.gam.toFixed(2);
+    if(run && p.sp > 0){for(let i=0;i<p.sp;i++)stp();drw();} else { drw(); }
     requestAnimationFrame(lp);
 }
 
-// Startup Routine: Init mask, then scatter seeds
-mU(); 
-const startSeeds = 5 + Math.floor(Math.random()*6);
-for(let k=0; k<startSeeds; k++){
-    const rx = 30 + Math.random()*140, ry = 30 + Math.random()*140;
-    const brushR = 5;
-    for(let y=-brushR;y<=brushR;y++)for(let x=-brushR;x<=brushR;x++){
-        if(x*x+y*y < brushR*brushR){
-            const idx = getI(Math.floor(rx+x), Math.floor(ry+y));
-            if(mask[idx]>0.1) gB[idx] = 0.8;
-        }
-    }
-}
-lp();
+mU(); lp();
 </script>
 </body>
 </html>
