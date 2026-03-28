@@ -3,61 +3,56 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-    <title>RD Sandbox v1.6</title>
+    <title>RD Sandbox v1.7</title>
     <style>
         :root { --bg: #000; --ui: #151515; --acc: #00d4ff; }
         body { margin: 0; background: var(--bg); color: #eee; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
-        /* 1:1 Square Canvas Logic */
+        /* Max Square Logic */
         #canvas-wrap { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         canvas { 
-            max-width: 100%; 
-            max-height: 100%; 
-            aspect-ratio: 1 / 1; 
-            touch-action: none; 
-            image-rendering: pixelated; 
-            background: #050505;
-            border: 1px solid #333;
+            width: 95vmin; height: 95vmin; 
+            touch-action: none; image-rendering: auto; 
+            background: #050505; border: 1px solid #333; 
         }
         
+        /* Floating Buttons on Canvas Right */
+        #hud { position: absolute; right: calc(50% - 47vmin + 10px); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 100; }
+        .hud-btn { 
+            width: 44px; height: 44px; border-radius: 12px; border: 1px solid #444; 
+            background: rgba(25, 25, 25, 0.8); color: #fff; font-size: 22px; 
+            display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); 
+        }
+        .hud-btn:active { background: var(--acc); }
+
         #hint { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); padding: 5px 15px; border-radius: 15px; font-size: 11px; opacity: 0; transition: 0.3s; pointer-events: none; border: 1px solid var(--acc); z-index: 200; }
 
-        /* Centered Side HUD */
-        #hud { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 12px; z-index: 100; }
-        .hud-btn { width: 50px; height: 50px; border-radius: 50%; border: 1px solid #444; background: rgba(30,30,30,0.8); color: #fff; font-size: 24px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-
-        /* UI Panel - One slider per row */
-        #ui { background: var(--ui); padding: 15px; border-top: 1px solid #333; z-index: 150; box-sizing: border-box; overflow-y: auto; }
-        .btn-row { display: flex; gap: 8px; margin-bottom: 15px; }
-        .btn { flex: 1; background: #333; border: 1px solid #444; color: #fff; padding: 12px 0; border-radius: 8px; font-size: 20px; cursor: pointer; }
-        
-        .sliders { display: flex; flex-direction: column; gap: 10px; }
-        .row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
-        .row label { width: 60px; color: #888; }
-        input[type="range"] { flex: 1; accent-color: var(--acc); height: 20px; }
-        .val { color: var(--acc); min-width: 45px; text-align: right; font-family: monospace; }
+        /* Bottom UI Panel */
+        #ui { background: var(--ui); padding: 10px 15px; border-top: 1px solid #333; z-index: 150; box-sizing: border-box; }
+        .sliders { display: flex; flex-direction: column; gap: 6px; }
+        .row { display: flex; align-items: center; gap: 10px; font-size: 11px; }
+        .row label { width: 50px; color: #888; }
+        input[type="range"] { flex: 1; accent-color: var(--acc); height: 18px; }
+        .val { color: var(--acc); min-width: 40px; text-align: right; font-family: monospace; }
 
         .v { position: absolute; top: 5px; left: 8px; font-size: 9px; color: #444; }
     </style>
 </head>
 <body>
     <div id="canvas-wrap">
-        <div class="v">v1.6-stable</div><div id="hint"></div>
+        <div class="v">v1.7-final</div><div id="hint"></div>
         <canvas id="cvs"></canvas>
         <div id="hud">
             <button class="hud-btn" id="p-btn" onclick="tglR()">▶️</button>
+            <button class="hud-btn" id="s-btn" onclick="cycS()">⭕</button>
+            <button class="hud-btn" onclick="cycC()">🌈</button>
+            <button class="hud-btn" onclick="tglG()" id="g-btn">✨</button>
             <button class="hud-btn" onclick="clr()">🔄</button>
             <button class="hud-btn" onclick="sv()">📸</button>
         </div>
     </div>
 
     <div id="ui">
-        <div class="btn-row">
-            <button class="btn" id="s-btn" onclick="cycS()">⭕</button>
-            <button class="btn" onclick="cycC()">🌈</button>
-            <button class="btn" onclick="tglG()" id="g-btn">✨</button>
-        </div>
-
         <div class="sliders">
             <div class="row"><label>Speed</label><input type="range" id="sp" min="1" max="25" value="8"><span class="val" id="v-sp"></span></div>
             <div class="row"><label>Scale</label><input type="range" id="sc" min="0.1" max="1.5" step="0.1" value="1.0"><span class="val" id="v-sc"></span></div>
@@ -108,58 +103,40 @@ function sv(){const l=document.createElement('a');l.download=`RD_${Date.now()}.p
 function mU(){
     const mc=document.createElement('canvas');mc.width=W;mc.height=H;const mctx=mc.getContext('2d');
     mctx.fillStyle="#000";mctx.fillRect(0,0,W,H);mctx.fillStyle="#fff";
-    mctx.filter = "blur(1px)";
+    mctx.filter = "blur(1.2px)";
     const curS = shapes[sI];
-    
-    if(curS==='circle'){
-        mctx.beginPath();mctx.arc(W/2,H/2,W/2.5,0,Math.PI*2);mctx.fill();
-    } else if(curS==='square'){
-        mctx.fillRect(35,35,W-70,H-70);
-    } else if(curS==='horse'){
-        mctx.font="bold 130px sans-serif";mctx.textAlign="center";mctx.textBaseline="middle";mctx.fillText('🐎',W/2,H/2+10);
-    } else if(curS==='metaball'){
-        // Safe Metaball generation
-        const bs=Array.from({length:5},()=>({x:40+Math.random()*(W-80),y:40+Math.random()*(H-80),r:20+Math.random()*25}));
-        const imgData = mctx.createImageData(W, H);
-        for(let y=0;y<H;y++){
-            for(let x=0;x<W;x++){
-                let val=0;
-                for(let b of bs){
-                    const dx = x-b.x, dy = y-b.y;
-                    const distSq = dx*dx + dy*dy + 1; // +1 to prevent div by zero
-                    val += (b.r*b.r)/distSq;
-                }
-                const i = (x + y*W)*4;
-                const alpha = val > 1.0 ? 255 : 0;
-                imgData.data[i]=imgData.data[i+1]=imgData.data[i+2]=255;
-                imgData.data[i+3]=alpha;
-            }
+    if(curS==='circle'){ mctx.beginPath();mctx.arc(W/2,H/2,W/2.5,0,Math.PI*2);mctx.fill(); }
+    else if(curS==='square'){ mctx.fillRect(35,35,W-70,H-70); }
+    else if(curS==='horse'){ mctx.font="bold 130px sans-serif";mctx.textAlign="center";mctx.textBaseline="middle";mctx.fillText('🐎',W/2,H/2+10); }
+    else if(curS==='metaball'){
+        const bs=Array.from({length:5},()=>({x:40+Math.random()*(W-80),y:40+Math.random()*(H-80),r:18+Math.random()*20}));
+        for(let y=0;y<H;y++)for(let x=0;x<W;x++){
+            let v=0; for(let b of bs){ v+=(b.r*b.r)/(Math.pow(x-b.x,2)+Math.pow(y-b.y,2)+1); }
+            if(v>1.0)mctx.fillRect(x,y,1,1);
         }
-        mctx.putImageData(imgData, 0, 0);
     }
     const d=mctx.getImageData(0,0,W,H).data;
     for(let i=0;i<W*H;i++) mask[i]=d[i*4]/255;
     gA.fill(1); gB.fill(0);
-    if(!run) drw();
+    drw();
 }
 
 const ipt=(e)=>{
     const r=cvs.getBoundingClientRect();
     const cx=(e.clientX || (e.touches && e.touches[0].clientX));
     const cy=(e.clientY || (e.touches && e.touches[0].clientY));
-    if(cx === undefined || cy === undefined) return;
-    const mx=Math.floor((cx-r.left)/r.width*W);
-    const my=Math.floor((cy-r.top)/r.height*H);
+    if(cx === undefined) return;
+    const mx=Math.floor((cx-r.left)/r.width*W), my=Math.floor((cy-r.top)/r.height*H);
     for(let y=-4;y<=4;y++)for(let x=-4;x<=4;x++){
         if(Math.sqrt(x*x+y*y)<4){
             const i=getI(mx+x,my+y);
-            if(mask[i]>0.1)gB[i]=0.8;
+            if(mask[i]>0.1)gB[i]=0.85;
         }
     }
     if(!run)drw();
 };
 cvs.addEventListener('pointerdown',ipt);
-cvs.addEventListener('pointermove',e=>{if(e.buttons>0 || (e.pointerType==='touch')) ipt(e)});
+cvs.addEventListener('pointermove',e=>{if(e.buttons>0||e.pointerType==='touch')ipt(e)});
 
 function stp(){
     const f=p.f,k=p.k,da=p.sc,db=p.sc*0.5;
@@ -180,7 +157,10 @@ function drw(){
         const px=i*4,m=mask[i],v=Math.max(0,1-(gA[i]-gB[i])),bV=gB[i],gl=p.glow?bV*1.5:0;
         let r=pR*v+bR*(1-v)+gl*100,g=pG*v+bG*(1-v)+gl*100,b=pB*v+bB*(1-v)+gl*100;
         const edge = (m > 0 && m < 0.9) ? 15 : 0;
-        d.data[px]=(r+edge)*m+bR*(1-m)+edge; d.data[px+1]=(g+edge)*m+bG*(1-m)+edge; d.data[px+2]=(b+edge)*m+bB*(1-m)+edge; d.data[px+3]=255;
+        d.data[px]=(r+edge)*m+bR*(1-m)+edge; 
+        d.data[px+1]=(g+edge)*m+bG*(1-m)+edge; 
+        d.data[px+2]=(b+edge)*m+bB*(1-m)+edge; 
+        d.data[px+3]=255;
     }
     ctx.putImageData(d,0,0);
 }
@@ -190,7 +170,7 @@ function lp(){
     p.sc=parseFloat(document.getElementById('sc').value);p.sp=parseInt(document.getElementById('sp').value);
     document.getElementById('v-f').innerText=p.f.toFixed(3);document.getElementById('v-k').innerText=p.k.toFixed(3);
     document.getElementById('v-sc').innerText=p.sc.toFixed(1);document.getElementById('v-sp').innerText=p.sp;
-    if(run){for(let i=0;i<p.sp;i++)stp();drw()} else { drw(); }
+    if(run){for(let i=0;i<p.sp;i++)stp();drw()}
     requestAnimationFrame(lp);
 }
 mU();lp();
