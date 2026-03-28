@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
     <title>RD Sandbox v2.2</title>
     <style>
-        :root { --bg: #000; --ui: #121212; --acc: #00d4ff; }
+        :root { --bg: #000; --ui: #151515; --acc: #00d4ff; }
         body { margin: 0; background: var(--bg); color: #eee; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
-        /* Canvas Area - Precise Square */
+        /* 1:1 Responsive Square Canvas */
         #canvas-wrap { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
         canvas { 
             width: 95vmin; height: 95vmin; 
@@ -16,10 +16,10 @@
             background: transparent; border: 1px solid #222; 
         }
         
-        /* HUD UI */
+        /* HUD - Vertical on the right of the canvas */
         #hud { position: absolute; right: calc(50% - 47.5vmin + 10px); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 100; }
         .hud-btn { 
-            width: 46px; height: 46px; border-radius: 12px; border: 1px solid #444; 
+            width: 44px; height: 44px; border-radius: 12px; border: 1px solid #444; 
             background: rgba(25, 25, 25, 0.9); color: #fff; font-size: 20px; 
             display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); transition: 0.2s;
         }
@@ -27,12 +27,12 @@
 
         #hint { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); padding: 8px 18px; border-radius: 20px; font-size: 11px; opacity: 0; transition: 0.3s; pointer-events: none; border: 1px solid var(--acc); z-index: 200; white-space: nowrap; }
 
-        /* Sliders Area */
-        #ui { background: var(--ui); padding: 15px 15px 40px 15px; border-top: 1px solid #333; z-index: 150; box-sizing: border-box; }
+        /* Sliders Area - Lifted for better visibility */
+        #ui { background: var(--ui); padding: 15px 15px 45px 15px; border-top: 1px solid #333; z-index: 150; box-sizing: border-box; }
         .sliders { display: flex; flex-direction: column; gap: 10px; }
-        .row { display: flex; align-items: center; gap: 10px; font-size: 11px; }
+        .row { display: flex; align-items: center; gap: 12px; font-size: 11px; }
         .row label { width: 50px; color: #777; font-weight: bold; }
-        input[type="range"] { flex: 1; accent-color: var(--acc); height: 24px; cursor: pointer; }
+        input[type="range"] { flex: 1; accent-color: var(--acc); height: 22px; cursor: pointer; }
         .val { color: var(--acc); min-width: 42px; text-align: right; font-family: monospace; font-size: 12px; }
         .res-btn { background: #222; border: none; color: #555; font-size: 14px; padding: 0 8px; cursor: pointer; border-radius: 4px; }
 
@@ -100,6 +100,132 @@ function cycS(){
     document.getElementById('s-btn').innerText = sIcons[sI];
     mU(); hnt("Shape: " + shapes[sI]);
 }
+
+function cycRD(){
+    rdI = (rdI + 1) % rdPresets.length;
+    const pr = rdPresets[rdI];
+    document.getElementById('f').value = pr.f;
+    document.getElementById('k').value = pr.k;
+    document.getElementById('rd-btn').innerText = pr.e;
+    hnt(pr.n);
+}
+
+function cycC(){
+    cI = (cI + 1) % cP.length;
+    document.getElementById('pc').value = cP[cI].p;
+    document.getElementById('bc').value = cP[cI].b;
+    hnt(cP[cI].n);
+}
+
+function tglG(){p.glow=!p.glow; document.getElementById('g-btn').classList.toggle('active', p.glow); hnt("Glow: "+(p.glow?"ON":"OFF"))}
+function rstP(id, val){ document.getElementById(id).value = val; hnt("Reset "+id); }
+
+function sv(){
+    hnt("📸 Saving Smooth PNG...");
+    const link=document.createElement('a');
+    link.download=`RD_v2.2_${Date.now()}.png`;
+    link.href=cvs.toDataURL('image/png');
+    link.click();
+}
+
+function mU(){
+    const mc=document.createElement('canvas'); mc.width=W; mc.height=H;
+    const mctx=mc.getContext('2d');
+    mctx.fillStyle="#000"; mctx.fillRect(0,0,W,H);
+    
+    // High-Precision Seed Rendering with Fade
+    mctx.filter = "blur(2.5px)";
+    const curS = shapes[sI];
+    if(curS==='square'){
+        mctx.fillStyle="#fff"; mctx.fillRect(25,25,W-50,H-50);
+    } else {
+        // Fused Metaball Outline extraction
+        const temp = document.createElement('canvas'); temp.width=W; temp.height=H;
+        const tctx = temp.getContext('2d');
+        tctx.filter = "blur(10px)";
+        for(let i=0; i<6; i++){
+            tctx.fillStyle="#fff"; tctx.beginPath();
+            tctx.arc(60+Math.random()*(W-120), 60+Math.random()*(H-120), 18+Math.random()*15, 0, Math.PI*2);
+            tctx.fill();
+        }
+        mctx.strokeStyle="#fff"; mctx.lineWidth=4;
+        mctx.strokeRect(30,30,W-60,H-60); // Base guide
+        mctx.drawImage(temp, 0, 0);
+    }
+    const d=mctx.getImageData(0,0,W,H).data;
+    for(let i=0; i<W*H; i++) mask[i]=d[i*4]/255;
+    gA.fill(1); gB.fill(0);
+    drw();
+}
+
+const ipt=(e)=>{
+    const r=cvs.getBoundingClientRect();
+    const cx=(e.clientX || (e.touches && e.touches[0].clientX));
+    const cy=(e.clientY || (e.touches && e.touches[0].clientY));
+    if(cx === undefined) return;
+    const mx=Math.floor((cx-r.left)/r.width*W), my=Math.floor((cy-r.top)/r.height*H);
+    const brushR = 6;
+    for(let y=-brushR;y<=brushR;y++)for(let x=-brushR;x<=brushR;x++){
+        const dsq = x*x+y*y;
+        if(dsq < brushR*brushR){
+            const i=getI(mx+x,my+y);
+            const soft = (1.0 - Math.sqrt(dsq)/brushR);
+            if(mask[i]>0.1) gB[i] = Math.max(gB[i], 0.85 * soft);
+        }
+    }
+    if(!run) drw();
+};
+cvs.addEventListener('pointerdown',ipt);
+cvs.addEventListener('pointermove',e=>{if(e.buttons>0||e.pointerType==='touch')ipt(e)});
+
+function stp(){
+    const f=p.f,k=p.k,da=p.sc,db=p.sc*0.5;
+    for(let i=0; i<W*H; i++){
+        const m=mask[i]; if(m<0.01){nA[i]=1;nB[i]=0;continue}
+        const x=i%W,y=(i/W)|0,a=gA[i],b=gB[i],abb=a*b*b;
+        
+        // Toroidal Laplacian
+        const lA=gA[getI(x-1,y)]*0.2+gA[getI(x+1,y)]*0.2+gA[getI(x,y-1)]*0.2+gA[getI(x,y+1)]*0.2+gA[getI(x-1,y-1)]*0.05+gA[getI(x+1,y-1)]*0.05+gA[getI(x-1,y+1)]*0.05+gA[getI(x+1,y+1)]*0.05-a;
+        const lB=gB[getI(x-1,y)]*0.2+gB[getI(x+1,y)]*0.2+gB[getI(x,y-1)]*0.2+gB[getI(x,y+1)]*0.2+gB[getI(x-1,y-1)]*0.05+gB[getI(x+1,y-1)]*0.05+gB[getI(x-1,y+1)]*0.05+gB[getI(x+1,y+1)]*0.05-b;
+        
+        nA[i]=Math.max(0,Math.min(1,a+(da*lA-abb+f*(1-a))*m));
+        nB[i]=Math.max(0,Math.min(1,b+(db*lB+abb-(k+f)*b)*m));
+    }
+    gA.set(nA);gB.set(nB);
+}
+
+function drw(){
+    const d=ctx.createImageData(W,H),pR=p.pRGB[0],pG=p.pRGB[1],pB=p.pRGB[2],bR=p.bRGB[0],bG=p.bRGB[1],bB=p.bRGB[2];
+    for(let i=0;i<W*H;i++){
+        const px=i*4,m=mask[i],v=Math.max(0,1-(gA[i]-gB[i])),bV=gB[i],gl=p.glow?bV*2.0:0;
+        let r=pR*v+bR*(1-v)+gl*100,g=pG*v+bG*(1-v)+gl*100,b=pB*v+bB*(1-v)+gl*100;
+        
+        // Handle transparency
+        const alpha = isT ? Math.min(255, (v*255 + bV*255) * m) : 255;
+        const edge = (m > 0 && m < 0.98) ? 12 : 0;
+        
+        d.data[px]=(r+edge)*m + (isT ? 0 : bR*(1-m)) + edge; 
+        d.data[px+1]=(g+edge)*m + (isT ? 0 : bG*(1-m)) + edge; 
+        d.data[px+2]=(b+edge)*m + (isT ? 0 : bB*(1-m)) + edge; 
+        d.data[px+3]=alpha;
+    }
+    ctx.putImageData(d,0,0);
+}
+
+function lp(){
+    p.f=parseFloat(document.getElementById('f').value); p.k=parseFloat(document.getElementById('k').value);
+    p.sc=parseFloat(document.getElementById('sc').value); p.sp=parseInt(document.getElementById('sp').value);
+    p.pRGB=hex(document.getElementById('pc').value); p.bRGB=hex(document.getElementById('bc').value);
+    document.getElementById('v-f').innerText=p.f.toFixed(3); document.getElementById('v-k').innerText=p.k.toFixed(3);
+    document.getElementById('v-sc').innerText=p.sc.toFixed(2); document.getElementById('v-sp').innerText=p.sp;
+    if(run){for(let i=0;i<p.sp;i++)stp();drw();} else { drw(); }
+    requestAnimationFrame(lp);
+}
+
+mU(); lp();
+</script>
+</body>
+</html>
 
 function cycRD(){
     rdI = (rdI + 1) % rdPresets.length;
