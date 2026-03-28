@@ -3,47 +3,59 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-    <title>RD Sandbox v1.5</title>
+    <title>RD Sandbox v1.6</title>
     <style>
         :root { --bg: #000; --ui: #151515; --acc: #00d4ff; }
         body { margin: 0; background: var(--bg); color: #eee; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
-        /* Canvas: Responsive Square */
-        #canvas-wrap { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
-        canvas { width: 100vw; height: 100vw; max-width: 100%; max-height: 100%; aspect-ratio: 1/1; touch-action: none; image-rendering: pixelated; border-bottom: 1px solid #333; }
+        /* 1:1 Square Canvas Logic */
+        #canvas-wrap { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        canvas { 
+            max-width: 100%; 
+            max-height: 100%; 
+            aspect-ratio: 1 / 1; 
+            touch-action: none; 
+            image-rendering: pixelated; 
+            background: #050505;
+            border: 1px solid #333;
+        }
         
-        #hint { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); padding: 5px 15px; border-radius: 15px; font-size: 11px; opacity: 0; transition: 0.3s; pointer-events: none; border: 1px solid var(--acc); z-index: 20; }
+        #hint { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); padding: 5px 15px; border-radius: 15px; font-size: 11px; opacity: 0; transition: 0.3s; pointer-events: none; border: 1px solid var(--acc); z-index: 200; }
 
-        /* UI Panel */
-        #ui { background: var(--ui); padding: 12px; border-top: 1px solid #333; z-index: 100; box-sizing: border-box; }
-        .btn-row { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 15px; }
-        .btn { flex: 1; background: #333; border: 1px solid #444; color: #fff; padding: 10px 0; border-radius: 8px; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .btn:active { background: var(--acc); }
+        /* Centered Side HUD */
+        #hud { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 12px; z-index: 100; }
+        .hud-btn { width: 50px; height: 50px; border-radius: 50%; border: 1px solid #444; background: rgba(30,30,30,0.8); color: #fff; font-size: 24px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
 
-        /* Sliders */
-        .sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 15px; }
-        .row { display: flex; align-items: center; gap: 8px; font-size: 10px; }
-        .row label { width: 45px; color: #888; }
-        input[type="range"] { flex: 1; accent-color: var(--acc); height: 15px; }
-        .val { color: var(--acc); min-width: 32px; text-align: right; font-family: monospace; }
+        /* UI Panel - One slider per row */
+        #ui { background: var(--ui); padding: 15px; border-top: 1px solid #333; z-index: 150; box-sizing: border-box; overflow-y: auto; }
+        .btn-row { display: flex; gap: 8px; margin-bottom: 15px; }
+        .btn { flex: 1; background: #333; border: 1px solid #444; color: #fff; padding: 12px 0; border-radius: 8px; font-size: 20px; cursor: pointer; }
+        
+        .sliders { display: flex; flex-direction: column; gap: 10px; }
+        .row { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+        .row label { width: 60px; color: #888; }
+        input[type="range"] { flex: 1; accent-color: var(--acc); height: 20px; }
+        .val { color: var(--acc); min-width: 45px; text-align: right; font-family: monospace; }
 
         .v { position: absolute; top: 5px; left: 8px; font-size: 9px; color: #444; }
     </style>
 </head>
 <body>
     <div id="canvas-wrap">
-        <div class="v">v1.5-fixed</div><div id="hint"></div>
+        <div class="v">v1.6-stable</div><div id="hint"></div>
         <canvas id="cvs"></canvas>
+        <div id="hud">
+            <button class="hud-btn" id="p-btn" onclick="tglR()">▶️</button>
+            <button class="hud-btn" onclick="clr()">🔄</button>
+            <button class="hud-btn" onclick="sv()">📸</button>
+        </div>
     </div>
 
     <div id="ui">
         <div class="btn-row">
-            <button class="btn" id="p-btn" onclick="tglR()">▶️</button>
             <button class="btn" id="s-btn" onclick="cycS()">⭕</button>
             <button class="btn" onclick="cycC()">🌈</button>
             <button class="btn" onclick="tglG()" id="g-btn">✨</button>
-            <button class="btn" onclick="clr()">🔄</button>
-            <button class="btn" onclick="sv()">📸</button>
         </div>
 
         <div class="sliders">
@@ -75,7 +87,7 @@ const getI=(x,y)=>((x+W)%W)+((y+H)%H)*W;
 const hex=(h)=>h.match(/[A-Za-z0-9]{2}/g).map(v=>parseInt(v,16));
 
 function tglR(){run=!run;document.getElementById('p-btn').innerText=run?"⏸️":"▶️";hnt(run?"Start":"Pause")}
-function clr(){gA.fill(1);gB.fill(0);drw();hnt("Clear")}
+function clr(){gA.fill(1);gB.fill(0);drw();hnt("Clear Canvas")}
 
 function cycS(){
     sI = (sI + 1) % shapes.length;
@@ -98,15 +110,37 @@ function mU(){
     mctx.fillStyle="#000";mctx.fillRect(0,0,W,H);mctx.fillStyle="#fff";
     mctx.filter = "blur(1px)";
     const curS = shapes[sI];
-    if(curS==='circle'){mctx.beginPath();mctx.arc(W/2,H/2,W/2.5,0,Math.PI*2);mctx.fill()}
-    else if(curS==='square'){mctx.fillRect(35,35,W-70,H-70)}
-    else if(curS==='horse'){mctx.font="bold 130px sans-serif";mctx.textAlign="center";mctx.textBaseline="middle";mctx.fillText('🐎',W/2,H/2+10)}
-    else if(curS==='metaball'){
+    
+    if(curS==='circle'){
+        mctx.beginPath();mctx.arc(W/2,H/2,W/2.5,0,Math.PI*2);mctx.fill();
+    } else if(curS==='square'){
+        mctx.fillRect(35,35,W-70,H-70);
+    } else if(curS==='horse'){
+        mctx.font="bold 130px sans-serif";mctx.textAlign="center";mctx.textBaseline="middle";mctx.fillText('🐎',W/2,H/2+10);
+    } else if(curS==='metaball'){
+        // Safe Metaball generation
         const bs=Array.from({length:5},()=>({x:40+Math.random()*(W-80),y:40+Math.random()*(H-80),r:20+Math.random()*25}));
-        for(let y=0;y<H;y++)for(let x=0;x<W;x++){let v=0;bs.forEach(b=>v+=(b.r*b.r)/(Math.pow(x-b.x,2)+Math.pow(y-b.y,2)));if(v>1)mctx.fillRect(x,y,1,1)}
+        const imgData = mctx.createImageData(W, H);
+        for(let y=0;y<H;y++){
+            for(let x=0;x<W;x++){
+                let val=0;
+                for(let b of bs){
+                    const dx = x-b.x, dy = y-b.y;
+                    const distSq = dx*dx + dy*dy + 1; // +1 to prevent div by zero
+                    val += (b.r*b.r)/distSq;
+                }
+                const i = (x + y*W)*4;
+                const alpha = val > 1.0 ? 255 : 0;
+                imgData.data[i]=imgData.data[i+1]=imgData.data[i+2]=255;
+                imgData.data[i+3]=alpha;
+            }
+        }
+        mctx.putImageData(imgData, 0, 0);
     }
-    const d=mctx.getImageData(0,0,W,H).data;for(let i=0;i<W*H;i++)mask[i]=d[i*4]/255;
-    gA.fill(1);gB.fill(0);drw();
+    const d=mctx.getImageData(0,0,W,H).data;
+    for(let i=0;i<W*H;i++) mask[i]=d[i*4]/255;
+    gA.fill(1); gB.fill(0);
+    if(!run) drw();
 }
 
 const ipt=(e)=>{
@@ -125,7 +159,7 @@ const ipt=(e)=>{
     if(!run)drw();
 };
 cvs.addEventListener('pointerdown',ipt);
-cvs.addEventListener('pointermove',e=>{if(e.buttons>0)ipt(e)});
+cvs.addEventListener('pointermove',e=>{if(e.buttons>0 || (e.pointerType==='touch')) ipt(e)});
 
 function stp(){
     const f=p.f,k=p.k,da=p.sc,db=p.sc*0.5;
@@ -136,50 +170,6 @@ function stp(){
         const lB=gB[getI(x-1,y)]*0.2+gB[getI(x+1,y)]*0.2+gB[getI(x,y-1)]*0.2+gB[getI(x,y+1)]*0.2+gB[getI(x-1,y-1)]*0.05+gB[getI(x+1,y-1)]*0.05+gB[getI(x-1,y+1)]*0.05+gB[getI(x+1,y+1)]*0.05-b;
         nA[i]=Math.max(0,Math.min(1,a+(da*lA-abb+f*(1-a))*m));
         nB[i]=Math.max(0,Math.min(1,b+(db*lB+abb-(k+f)*b)*m));
-    }
-    gA.set(nA);gB.set(nB);
-}
-
-function drw(){
-    const d=ctx.createImageData(W,H),pR=p.pRGB[0],pG=p.pRGB[1],pB=p.pRGB[2],bR=p.bRGB[0],bG=p.bRGB[1],bB=p.bRGB[2];
-    for(let i=0;i<W*H;i++){
-        const px=i*4,m=mask[i],v=Math.max(0,1-(gA[i]-gB[i])),bV=gB[i],gl=p.glow?bV*1.5:0;
-        let r=pR*v+bR*(1-v)+gl*100,g=pG*v+bG*(1-v)+gl*100,b=pB*v+bB*(1-v)+gl*100;
-        const edge = (m > 0 && m < 0.9) ? 15 : 0;
-        d.data[px]=(r+edge)*m+bR*(1-m)+edge; 
-        d.data[px+1]=(g+edge)*m+bG*(1-m)+edge; 
-        d.data[px+2]=(b+edge)*m+bB*(1-m)+edge; 
-        d.data[px+3]=255;
-    }
-    ctx.putImageData(d,0,0);
-}
-
-function lp(){
-    p.f=parseFloat(document.getElementById('f').value);p.k=parseFloat(document.getElementById('k').value);
-    p.sc=parseFloat(document.getElementById('sc').value);p.sp=parseInt(document.getElementById('sp').value);
-    document.getElementById('v-f').innerText=p.f.toFixed(3);document.getElementById('v-k').innerText=p.k.toFixed(3);
-    document.getElementById('v-sc').innerText=p.sc.toFixed(1);document.getElementById('v-sp').innerText=p.sp;
-    if(run){for(let i=0;i<p.sp;i++)stp();drw()}
-    requestAnimationFrame(lp);
-}
-mU();lp();
-</script>
-</body>
-</html>
-    const mx=Math.floor((cx-r.left)/r.width*W),my=Math.floor((cy-r.top)/r.height*H);
-    for(let y=-4;y<=4;y++)for(let x=-4;x<=4;x++){if(Math.sqrt(x*x+y*y)<4){const i=getI(mx+x,my+y);if(mask[i]>0.1)gB[i]=0.8}}
-    if(!run)drw();
-};
-cvs.addEventListener('pointerdown',ipt);cvs.addEventListener('pointermove',e=>{if(e.buttons>0||e.touches)ipt(e)});
-
-function stp(){
-    const f=p.f,k=p.k,da=p.sc,db=p.sc*0.5;
-    for(let i=0; i<W*H; i++){
-        if(mask[i]<0.01){nA[i]=1;nB[i]=0;continue}
-        const x=i%W,y=(i/W)|0,a=gA[i],b=gB[i],abb=a*b*b;
-        const lA=gA[getI(x-1,y)]*0.2+gA[getI(x+1,y)]*0.2+gA[getI(x,y-1)]*0.2+gA[getI(x,y+1)]*0.2+gA[getI(x-1,y-1)]*0.05+gA[getI(x+1,y-1)]*0.05+gA[getI(x-1,y+1)]*0.05+gA[getI(x+1,y+1)]*0.05-a;
-        const lB=gB[getI(x-1,y)]*0.2+gB[getI(x+1,y)]*0.2+gB[getI(x,y-1)]*0.2+gB[getI(x,y+1)]*0.2+gB[getI(x-1,y-1)]*0.05+gB[getI(x+1,y-1)]*0.05+gB[getI(x-1,y+1)]*0.05+gB[getI(x+1,y+1)]*0.05-b;
-        nA[i]=Math.max(0,Math.min(1,a+(da*lA-abb+f*(1-a))*mask[i]));nB[i]=Math.max(0,Math.min(1,b+(db*lB+abb-(k+f)*b)*mask[i]));
     }
     gA.set(nA);gB.set(nB);
 }
