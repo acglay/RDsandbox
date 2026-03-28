@@ -3,46 +3,44 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-    <title>RD Sandbox v1.4</title>
+    <title>RD Sandbox v1.5</title>
     <style>
         :root { --bg: #000; --ui: #151515; --acc: #00d4ff; }
         body { margin: 0; background: var(--bg); color: #eee; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
-        /* Canvas Area: Strict Square */
-        #canvas-wrap { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        canvas { max-width: 100%; max-height: 100%; aspect-ratio: 1/1; touch-action: none; image-rendering: auto; border: 1px solid #333; }
+        /* Canvas: Responsive Square */
+        #canvas-wrap { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
+        canvas { width: 100vw; height: 100vw; max-width: 100%; max-height: 100%; aspect-ratio: 1/1; touch-action: none; image-rendering: pixelated; border-bottom: 1px solid #333; }
         
         #hint { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); padding: 5px 15px; border-radius: 15px; font-size: 11px; opacity: 0; transition: 0.3s; pointer-events: none; border: 1px solid var(--acc); z-index: 20; }
 
-        /* Compact UI Panel */
-        #ui { background: var(--ui); padding: 10px; border-top: 1px solid #333; z-index: 100; }
-        
-        /* Button Row */
-        .btn-row { display: flex; justify-content: space-between; gap: 5px; margin-bottom: 12px; }
-        .btn { flex: 1; background: #333; border: 1px solid #444; color: #fff; padding: 8px 0; border-radius: 6px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        /* UI Panel */
+        #ui { background: var(--ui); padding: 12px; border-top: 1px solid #333; z-index: 100; box-sizing: border-box; }
+        .btn-row { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 15px; }
+        .btn { flex: 1; background: #333; border: 1px solid #444; color: #fff; padding: 10px 0; border-radius: 8px; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .btn:active { background: var(--acc); }
-        .btn.active { border-color: var(--acc); color: var(--acc); }
 
-        /* RD Parameters */
-        .sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 15px; }
+        /* Sliders */
+        .sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 15px; }
         .row { display: flex; align-items: center; gap: 8px; font-size: 10px; }
-        .row label { width: 60px; color: #888; white-space: nowrap; }
-        input[type="range"] { flex: 1; accent-color: var(--acc); height: 12px; }
-        .val { color: var(--acc); min-width: 30px; text-align: right; font-family: monospace; }
+        .row label { width: 45px; color: #888; }
+        input[type="range"] { flex: 1; accent-color: var(--acc); height: 15px; }
+        .val { color: var(--acc); min-width: 32px; text-align: right; font-family: monospace; }
 
         .v { position: absolute; top: 5px; left: 8px; font-size: 9px; color: #444; }
     </style>
 </head>
 <body>
     <div id="canvas-wrap">
-        <div class="v">v1.4-final</div><div id="hint"></div>
+        <div class="v">v1.5-fixed</div><div id="hint"></div>
         <canvas id="cvs"></canvas>
     </div>
 
     <div id="ui">
         <div class="btn-row">
             <button class="btn" id="p-btn" onclick="tglR()">▶️</button>
-            <button class="btn" onclick="cycS()">⭕</button> <button class="btn" onclick="cycC()">🌈</button>
+            <button class="btn" id="s-btn" onclick="cycS()">⭕</button>
+            <button class="btn" onclick="cycC()">🌈</button>
             <button class="btn" onclick="tglG()" id="g-btn">✨</button>
             <button class="btn" onclick="clr()">🔄</button>
             <button class="btn" onclick="sv()">📸</button>
@@ -59,12 +57,18 @@
 <script>
 const W=200,H=200,cvs=document.getElementById('cvs'),ctx=cvs.getContext('2d',{alpha:false});
 cvs.width=W; cvs.height=H;
+
 let gA=new Float32Array(W*H).fill(1), gB=new Float32Array(W*H).fill(0), nA=new Float32Array(W*H), nB=new Float32Array(W*H), mask=new Float32Array(W*H).fill(1);
 let run=false, cI=0, sI=0;
+
 const shapes = ['circle', 'square', 'horse', 'metaball'];
 const sIcons = ['⭕', '⬜', '🐎', '🎲'];
 const p={f:0.037, k:0.060, sp:8, glow:true, sc:1.0, pRGB:[0,255,255], bRGB:[26,26,46]};
-const cP=[{p:"#00ffff",b:"#1a1a2e",n:"Cool"},{p:"#ff00ff",b:"#220022",n:"Neon"},{p:"#d4af37",b:"#111111",n:"Chic"},{p:"#ccff00",b:"#330066",n:"Psyche"},{p:"#ffffff",b:"#002200",n:"Forest"},{p:"#ff4400",b:"#221100",n:"Magma"}];
+const cP=[
+    {p:"#00ffff",b:"#1a1a2e",n:"Cool"},{p:"#ff00ff",b:"#220022",n:"Neon"},
+    {p:"#d4af37",b:"#111111",n:"Chic"},{p:"#ccff00",b:"#330066",n:"Psyche"},
+    {p:"#ffffff",b:"#002200",n:"Forest"},{p:"#ff4400",b:"#221100",n:"Magma"}
+];
 
 const hnt=(t)=>{const h=document.getElementById('hint');h.innerText=t;h.style.opacity=1;setTimeout(()=>h.style.opacity=0,1000)};
 const getI=(x,y)=>((x+W)%W)+((y+H)%H)*W;
@@ -75,11 +79,17 @@ function clr(){gA.fill(1);gB.fill(0);drw();hnt("Clear")}
 
 function cycS(){
     sI = (sI + 1) % shapes.length;
-    event.target.innerText = sIcons[sI];
+    document.getElementById('s-btn').innerText = sIcons[sI];
     mU(); hnt("Shape: " + shapes[sI]);
 }
 
-function cycC(){cI=(cI+1)%cP.length;document.getElementById('pc')?0:0; p.pRGB=hex(cP[cI].p); p.bRGB=hex(cP[cI].b); hnt(cP[cI].n)}
+function cycC(){
+    cI = (cI + 1) % cP.length;
+    p.pRGB = hex(cP[cI].p);
+    p.bRGB = hex(cP[cI].b);
+    hnt("Color: " + cP[cI].n);
+}
+
 function tglG(){p.glow=!p.glow; document.getElementById('g-btn').style.color=p.glow?'var(--acc)':'#fff'; hnt("Glow: "+(p.glow?"ON":"OFF"))}
 function sv(){const l=document.createElement('a');l.download=`RD_${Date.now()}.png`;l.href=cvs.toDataURL();l.click();hnt("Saved")}
 
@@ -95,11 +105,67 @@ function mU(){
         const bs=Array.from({length:5},()=>({x:40+Math.random()*(W-80),y:40+Math.random()*(H-80),r:20+Math.random()*25}));
         for(let y=0;y<H;y++)for(let x=0;x<W;x++){let v=0;bs.forEach(b=>v+=(b.r*b.r)/(Math.pow(x-b.x,2)+Math.pow(y-b.y,2)));if(v>1)mctx.fillRect(x,y,1,1)}
     }
-    const d=mctx.getImageData(0,0,W,H).data;for(let i=0;i<W*H;i++)mask[i]=d[i*4]/255;gA.fill(1);gB.fill(0);drw();
+    const d=mctx.getImageData(0,0,W,H).data;for(let i=0;i<W*H;i++)mask[i]=d[i*4]/255;
+    gA.fill(1);gB.fill(0);drw();
 }
 
 const ipt=(e)=>{
-    const r=cvs.getBoundingClientRect(),cx=e.clientX||(e.touches?e.touches[0].clientX:0),cy=e.clientY||(e.touches?e.touches[0].clientY:0);
+    const r=cvs.getBoundingClientRect();
+    const cx=(e.clientX || (e.touches && e.touches[0].clientX));
+    const cy=(e.clientY || (e.touches && e.touches[0].clientY));
+    if(cx === undefined || cy === undefined) return;
+    const mx=Math.floor((cx-r.left)/r.width*W);
+    const my=Math.floor((cy-r.top)/r.height*H);
+    for(let y=-4;y<=4;y++)for(let x=-4;x<=4;x++){
+        if(Math.sqrt(x*x+y*y)<4){
+            const i=getI(mx+x,my+y);
+            if(mask[i]>0.1)gB[i]=0.8;
+        }
+    }
+    if(!run)drw();
+};
+cvs.addEventListener('pointerdown',ipt);
+cvs.addEventListener('pointermove',e=>{if(e.buttons>0)ipt(e)});
+
+function stp(){
+    const f=p.f,k=p.k,da=p.sc,db=p.sc*0.5;
+    for(let i=0; i<W*H; i++){
+        const m=mask[i]; if(m<0.01){nA[i]=1;nB[i]=0;continue}
+        const x=i%W,y=(i/W)|0,a=gA[i],b=gB[i],abb=a*b*b;
+        const lA=gA[getI(x-1,y)]*0.2+gA[getI(x+1,y)]*0.2+gA[getI(x,y-1)]*0.2+gA[getI(x,y+1)]*0.2+gA[getI(x-1,y-1)]*0.05+gA[getI(x+1,y-1)]*0.05+gA[getI(x-1,y+1)]*0.05+gA[getI(x+1,y+1)]*0.05-a;
+        const lB=gB[getI(x-1,y)]*0.2+gB[getI(x+1,y)]*0.2+gB[getI(x,y-1)]*0.2+gB[getI(x,y+1)]*0.2+gB[getI(x-1,y-1)]*0.05+gB[getI(x+1,y-1)]*0.05+gB[getI(x-1,y+1)]*0.05+gB[getI(x+1,y+1)]*0.05-b;
+        nA[i]=Math.max(0,Math.min(1,a+(da*lA-abb+f*(1-a))*m));
+        nB[i]=Math.max(0,Math.min(1,b+(db*lB+abb-(k+f)*b)*m));
+    }
+    gA.set(nA);gB.set(nB);
+}
+
+function drw(){
+    const d=ctx.createImageData(W,H),pR=p.pRGB[0],pG=p.pRGB[1],pB=p.pRGB[2],bR=p.bRGB[0],bG=p.bRGB[1],bB=p.bRGB[2];
+    for(let i=0;i<W*H;i++){
+        const px=i*4,m=mask[i],v=Math.max(0,1-(gA[i]-gB[i])),bV=gB[i],gl=p.glow?bV*1.5:0;
+        let r=pR*v+bR*(1-v)+gl*100,g=pG*v+bG*(1-v)+gl*100,b=pB*v+bB*(1-v)+gl*100;
+        const edge = (m > 0 && m < 0.9) ? 15 : 0;
+        d.data[px]=(r+edge)*m+bR*(1-m)+edge; 
+        d.data[px+1]=(g+edge)*m+bG*(1-m)+edge; 
+        d.data[px+2]=(b+edge)*m+bB*(1-m)+edge; 
+        d.data[px+3]=255;
+    }
+    ctx.putImageData(d,0,0);
+}
+
+function lp(){
+    p.f=parseFloat(document.getElementById('f').value);p.k=parseFloat(document.getElementById('k').value);
+    p.sc=parseFloat(document.getElementById('sc').value);p.sp=parseInt(document.getElementById('sp').value);
+    document.getElementById('v-f').innerText=p.f.toFixed(3);document.getElementById('v-k').innerText=p.k.toFixed(3);
+    document.getElementById('v-sc').innerText=p.sc.toFixed(1);document.getElementById('v-sp').innerText=p.sp;
+    if(run){for(let i=0;i<p.sp;i++)stp();drw()}
+    requestAnimationFrame(lp);
+}
+mU();lp();
+</script>
+</body>
+</html>
     const mx=Math.floor((cx-r.left)/r.width*W),my=Math.floor((cy-r.top)/r.height*H);
     for(let y=-4;y<=4;y++)for(let x=-4;x<=4;x++){if(Math.sqrt(x*x+y*y)<4){const i=getI(mx+x,my+y);if(mask[i]>0.1)gB[i]=0.8}}
     if(!run)drw();
