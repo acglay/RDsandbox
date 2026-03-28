@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-    <title>RD Sandbox v2.2</title>
+    <title>RD Sandbox v2.2 Final</title>
     <style>
         :root { --bg: #000; --ui: #151515; --acc: #00d4ff; }
         body { margin: 0; background: var(--bg); color: #eee; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
@@ -27,7 +27,7 @@
 
         #hint { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); padding: 8px 16px; border-radius: 20px; font-size: 11px; opacity: 0; transition: 0.3s; pointer-events: none; border: 1px solid var(--acc); z-index: 200; white-space: nowrap; }
 
-        /* Sliders Area */
+        /* Sliders Area - Lifted for better visibility */
         #ui { background: var(--ui); padding: 15px 15px 45px 15px; border-top: 1px solid #333; z-index: 150; box-sizing: border-box; }
         .sliders { display: flex; flex-direction: column; gap: 10px; }
         .row { display: flex; align-items: center; gap: 12px; font-size: 11px; }
@@ -41,7 +41,7 @@
 </head>
 <body>
     <div id="canvas-wrap">
-        <div class="v">ver 2.2</div><div id="hint"></div>
+        <div class="v">ver 2.2 MASTER</div><div id="hint"></div>
         <canvas id="cvs"></canvas>
         <div id="hud">
             <button class="hud-btn" id="p-btn" onclick="tglR()">▶️</button>
@@ -58,7 +58,7 @@
     <div id="ui">
         <div class="sliders">
             <div class="row"><label>Speed</label><input type="range" id="sp" min="1" max="100" value="25"><span class="val" id="v-sp"></span><button class="res-btn" onclick="rstP('sp',25)">↺</button></div>
-            <div class="row"><label>Scale</label><input type="range" id="sc" min="0.1" max="1.0" step="0.05" value="0.5"><span class="val" id="v-sc"></span><button class="res-btn" onclick="rstP('sc',0.5)">↺</button></div>
+            <div class="row"><label>Scale</label><input type="range" id="sc" min="0.1" max="1.0" step="0.05" value="0.50"><span class="val" id="v-sc"></span><button class="res-btn" onclick="rstP('sc',0.50)">↺</button></div>
             <div class="row"><label>Feed</label><input type="range" id="f" min="0.01" max="0.1" step="0.001" value="0.037"><span class="val" id="v-f"></span><button class="res-btn" onclick="rstP('f',0.037)">↺</button></div>
             <div class="row"><label>Kill</label><input type="range" id="k" min="0.01" max="0.1" step="0.001" value="0.060"><span class="val" id="v-k"></span><button class="res-btn" onclick="rstP('k',0.060)">↺</button></div>
         </div>
@@ -121,7 +121,7 @@ function tglG(){p.glow=!p.glow; document.getElementById('g-btn').classList.toggl
 function rstP(id, val){ document.getElementById(id).value = val; hnt("Reset "+id); }
 
 function sv(){
-    hnt("📸 Saving Smooth PNG...");
+    hnt("📸 Saving Transparent PNG...");
     const link=document.createElement('a');
     link.download=`RD_Capture_${Date.now()}.png`;
     link.href=cvs.toDataURL('image/png');
@@ -133,270 +133,24 @@ function mU(){
     const mctx=mc.getContext('2d');
     mctx.fillStyle="#000"; mctx.fillRect(0,0,W,H);
     
-    // Smooth Seed Generation
-    mctx.filter = "blur(2.5px)";
+    // High-Precision Seed Rendering with Smooth Fade
     const curS = shapes[sI];
     if(curS==='square'){
-        mctx.fillStyle="#fff"; mctx.fillRect(25,25,W-50,H-50);
-    } else {
-        // Metaball Fusion
-        const temp = document.createElement('canvas'); temp.width=W; temp.height=H;
-        const tctx = temp.getContext('2d');
-        tctx.filter = "blur(12px)";
-        for(let i=0; i<5; i++){
-            tctx.fillStyle="#fff"; tctx.beginPath();
-            tctx.arc(60+Math.random()*(W-120), 60+Math.random()*(H-120), 22+Math.random()*15, 0, Math.PI*2);
-            tctx.fill();
-        }
-        // Outline Extraction
-        mctx.strokeStyle="#fff"; mctx.lineWidth=5;
-        mctx.drawImage(temp, 0, 0);
-    }
-    const d=mctx.getImageData(0,0,W,H).data;
-    for(let i=0; i<W*H; i++) mask[i]=d[i*4]/255;
-    gA.fill(1); gB.fill(0);
-    drw();
-}
-
-const ipt=(e)=>{
-    const r=cvs.getBoundingClientRect();
-    const cx=(e.clientX || (e.touches && e.touches[0].clientX));
-    const cy=(e.clientY || (e.touches && e.touches[0].clientY));
-    if(cx === undefined) return;
-    const mx=Math.floor((cx-r.left)/r.width*W), my=Math.floor((cy-r.top)/r.height*H);
-    const brushR = 6;
-    for(let y=-brushR;y<=brushR;y++)for(let x=-brushR;x<=brushR;x++){
-        const dsq = x*x+y*y;
-        if(dsq < brushR*brushR){
-            const i=getI(mx+x,my+y);
-            const soft = (1.0 - Math.sqrt(dsq)/brushR);
-            if(mask[i]>0.1) gB[i] = Math.max(gB[i], 0.85 * soft);
-        }
-    }
-    if(!run) drw();
-};
-cvs.addEventListener('pointerdown',ipt);
-cvs.addEventListener('pointermove',e=>{if(e.buttons>0||e.pointerType==='touch')ipt(e)});
-
-function stp(){
-    const f=p.f,k=p.k,da=p.sc,db=p.sc*0.5;
-    for(let i=0; i<W*H; i++){
-        const m=mask[i]; if(m<0.01){nA[i]=1;nB[i]=0;continue}
-        const x=i%W,y=(i/W)|0,a=gA[i],b=gB[i],abb=a*b*b;
-        const lA=gA[getI(x-1,y)]*0.2+gA[getI(x+1,y)]*0.2+gA[getI(x,y-1)]*0.2+gA[getI(x,y+1)]*0.2+gA[getI(x-1,y-1)]*0.05+gA[getI(x+1,y-1)]*0.05+gA[getI(x-1,y+1)]*0.05+gA[getI(x+1,y+1)]*0.05-a;
-        const lB=gB[getI(x-1,y)]*0.2+gB[getI(x+1,y)]*0.2+gB[getI(x,y-1)]*0.2+gB[getI(x,y+1)]*0.2+gB[getI(x-1,y-1)]*0.05+gB[getI(x+1,y-1)]*0.05+gB[getI(x-1,y+1)]*0.05+gB[getI(x+1,y+1)]*0.05-b;
-        nA[i]=Math.max(0,Math.min(1,a+(da*lA-abb+f*(1-a))*m));
-        nB[i]=Math.max(0,Math.min(1,b+(db*lB+abb-(k+f)*b)*m));
-    }
-    gA.set(nA);gB.set(nB);
-}
-
-function drw(){
-    const d=ctx.createImageData(W,H),pR=p.pRGB[0],pG=p.pRGB[1],pB=p.pRGB[2],bR=p.bRGB[0],bG=p.bRGB[1],bB=p.bRGB[2];
-    for(let i=0;i<W*H;i++){
-        const px=i*4,m=mask[i],v=Math.max(0,1-(gA[i]-gB[i])),bV=gB[i],gl=p.glow?bV*2.0:0;
-        let r=pR*v+bR*(1-v)+gl*100,g=pG*v+bG*(1-v)+gl*100,b=pB*v+bB*(1-v)+gl*100;
-        const alpha = isT ? Math.min(255, (v*255 + bV*255) * m) : 255;
-        const edge = (m > 0 && m < 0.98) ? 12 : 0;
-        d.data[px]=(r+edge)*m + (isT ? 0 : bR*(1-m)) + edge; 
-        d.data[px+1]=(g+edge)*m + (isT ? 0 : bG*(1-m)) + edge; 
-        d.data[px+2]=(b+edge)*m + (isT ? 0 : bB*(1-m)) + edge; 
-        d.data[px+3]=alpha;
-    }
-    ctx.putImageData(d,0,0);
-}
-
-function lp(){
-    p.f=parseFloat(document.getElementById('f').value); p.k=parseFloat(document.getElementById('k').value);
-    p.sc=parseFloat(document.getElementById('sc').value); p.sp=parseInt(document.getElementById('sp').value);
-    p.pRGB=hex(document.getElementById('pc').value); p.bRGB=hex(document.getElementById('bc').value);
-    document.getElementById('v-f').innerText=p.f.toFixed(3); document.getElementById('v-k').innerText=p.k.toFixed(3);
-    document.getElementById('v-sc').innerText=p.sc.toFixed(2); document.getElementById('v-sp').innerText=p.sp;
-    if(run){for(let i=0;i<p.sp;i++)stp();drw();} else { drw(); }
-    requestAnimationFrame(lp);
-}
-
-mU(); lp();
-</script>
-</body>
-</html>
-
-function cycRD(){
-    rdI = (rdI + 1) % rdPresets.length;
-    const pr = rdPresets[rdI];
-    document.getElementById('f').value = pr.f;
-    document.getElementById('k').value = pr.k;
-    document.getElementById('rd-btn').innerText = pr.e;
-    hnt(pr.n);
-}
-
-function cycC(){
-    cI = (cI + 1) % cP.length;
-    document.getElementById('pc').value = cP[cI].p;
-    document.getElementById('bc').value = cP[cI].b;
-    hnt(cP[cI].n);
-}
-
-function tglG(){p.glow=!p.glow; document.getElementById('g-btn').classList.toggle('active', p.glow); hnt("Glow: "+(p.glow?"ON":"OFF"))}
-function rstP(id, val){ document.getElementById(id).value = val; hnt("Reset "+id); }
-
-function sv(){
-    hnt("📸 Saving Smooth PNG...");
-    const link=document.createElement('a');
-    link.download=`RD_v2.2_${Date.now()}.png`;
-    link.href=cvs.toDataURL('image/png');
-    link.click();
-}
-
-function mU(){
-    const mc=document.createElement('canvas'); mc.width=W; mc.height=H;
-    const mctx=mc.getContext('2d');
-    mctx.fillStyle="#000"; mctx.fillRect(0,0,W,H);
-    
-    // High-Precision Seed Rendering with Fade
-    mctx.filter = "blur(2.5px)";
-    const curS = shapes[sI];
-    if(curS==='square'){
-        mctx.fillStyle="#fff"; mctx.fillRect(25,25,W-50,H-50);
-    } else {
-        // Fused Metaball Outline extraction
-        const temp = document.createElement('canvas'); temp.width=W; temp.height=H;
-        const tctx = temp.getContext('2d');
-        tctx.filter = "blur(10px)";
-        for(let i=0; i<6; i++){
-            tctx.fillStyle="#fff"; tctx.beginPath();
-            tctx.arc(60+Math.random()*(W-120), 60+Math.random()*(H-120), 18+Math.random()*15, 0, Math.PI*2);
-            tctx.fill();
-        }
-        mctx.strokeStyle="#fff"; mctx.lineWidth=4;
-        mctx.strokeRect(30,30,W-60,H-60); // Base guide
-        mctx.drawImage(temp, 0, 0);
-    }
-    const d=mctx.getImageData(0,0,W,H).data;
-    for(let i=0; i<W*H; i++) mask[i]=d[i*4]/255;
-    gA.fill(1); gB.fill(0);
-    drw();
-}
-
-const ipt=(e)=>{
-    const r=cvs.getBoundingClientRect();
-    const cx=(e.clientX || (e.touches && e.touches[0].clientX));
-    const cy=(e.clientY || (e.touches && e.touches[0].clientY));
-    if(cx === undefined) return;
-    const mx=Math.floor((cx-r.left)/r.width*W), my=Math.floor((cy-r.top)/r.height*H);
-    const brushR = 6;
-    for(let y=-brushR;y<=brushR;y++)for(let x=-brushR;x<=brushR;x++){
-        const dsq = x*x+y*y;
-        if(dsq < brushR*brushR){
-            const i=getI(mx+x,my+y);
-            const soft = (1.0 - Math.sqrt(dsq)/brushR);
-            if(mask[i]>0.1) gB[i] = Math.max(gB[i], 0.85 * soft);
-        }
-    }
-    if(!run) drw();
-};
-cvs.addEventListener('pointerdown',ipt);
-cvs.addEventListener('pointermove',e=>{if(e.buttons>0||e.pointerType==='touch')ipt(e)});
-
-function stp(){
-    const f=p.f,k=p.k,da=p.sc,db=p.sc*0.5;
-    for(let i=0; i<W*H; i++){
-        const m=mask[i]; if(m<0.01){nA[i]=1;nB[i]=0;continue}
-        const x=i%W,y=(i/W)|0,a=gA[i],b=gB[i],abb=a*b*b;
-        
-        // Toroidal Laplacian
-        const lA=gA[getI(x-1,y)]*0.2+gA[getI(x+1,y)]*0.2+gA[getI(x,y-1)]*0.2+gA[getI(x,y+1)]*0.2+gA[getI(x-1,y-1)]*0.05+gA[getI(x+1,y-1)]*0.05+gA[getI(x-1,y+1)]*0.05+gA[getI(x+1,y+1)]*0.05-a;
-        const lB=gB[getI(x-1,y)]*0.2+gB[getI(x+1,y)]*0.2+gB[getI(x,y-1)]*0.2+gB[getI(x,y+1)]*0.2+gB[getI(x-1,y-1)]*0.05+gB[getI(x+1,y-1)]*0.05+gB[getI(x-1,y+1)]*0.05+gB[getI(x+1,y+1)]*0.05-b;
-        
-        nA[i]=Math.max(0,Math.min(1,a+(da*lA-abb+f*(1-a))*m));
-        nB[i]=Math.max(0,Math.min(1,b+(db*lB+abb-(k+f)*b)*m));
-    }
-    gA.set(nA);gB.set(nB);
-}
-
-function drw(){
-    const d=ctx.createImageData(W,H),pR=p.pRGB[0],pG=p.pRGB[1],pB=p.pRGB[2],bR=p.bRGB[0],bG=p.bRGB[1],bB=p.bRGB[2];
-    for(let i=0;i<W*H;i++){
-        const px=i*4,m=mask[i],v=Math.max(0,1-(gA[i]-gB[i])),bV=gB[i],gl=p.glow?bV*2.0:0;
-        let r=pR*v+bR*(1-v)+gl*100,g=pG*v+bG*(1-v)+gl*100,b=pB*v+bB*(1-v)+gl*100;
-        
-        // Handle transparency
-        const alpha = isT ? Math.min(255, (v*255 + bV*255) * m) : 255;
-        const edge = (m > 0 && m < 0.98) ? 12 : 0;
-        
-        d.data[px]=(r+edge)*m + (isT ? 0 : bR*(1-m)) + edge; 
-        d.data[px+1]=(g+edge)*m + (isT ? 0 : bG*(1-m)) + edge; 
-        d.data[px+2]=(b+edge)*m + (isT ? 0 : bB*(1-m)) + edge; 
-        d.data[px+3]=alpha;
-    }
-    ctx.putImageData(d,0,0);
-}
-
-function lp(){
-    p.f=parseFloat(document.getElementById('f').value); p.k=parseFloat(document.getElementById('k').value);
-    p.sc=parseFloat(document.getElementById('sc').value); p.sp=parseInt(document.getElementById('sp').value);
-    p.pRGB=hex(document.getElementById('pc').value); p.bRGB=hex(document.getElementById('bc').value);
-    document.getElementById('v-f').innerText=p.f.toFixed(3); document.getElementById('v-k').innerText=p.k.toFixed(3);
-    document.getElementById('v-sc').innerText=p.sc.toFixed(2); document.getElementById('v-sp').innerText=p.sp;
-    if(run){for(let i=0;i<p.sp;i++)stp();drw();} else { drw(); }
-    requestAnimationFrame(lp);
-}
-
-mU(); lp();
-</script>
-</body>
-</html>
-
-function cycRD(){
-    rdI = (rdI + 1) % rdPresets.length;
-    const pre = rdPresets[rdI];
-    document.getElementById('f').value = pre.f;
-    document.getElementById('k').value = pre.k;
-    document.getElementById('rd-btn').innerText = pre.e;
-    hnt(pre.n);
-}
-
-function cycC(){
-    cI = (cI + 1) % cP.length;
-    document.getElementById('pc').value = cP[cI].p;
-    document.getElementById('bc').value = cP[cI].b;
-    hnt(cP[cI].n);
-}
-
-function tglG(){p.glow=!p.glow; document.getElementById('g-btn').classList.toggle('active', p.glow); hnt("Glow: "+(p.glow?"ON":"OFF"))}
-function rstP(id, val){ document.getElementById(id).value = val; hnt("Reset"); }
-
-function sv(){
-    hnt("📸 Saving Transparent PNG...");
-    const link=document.createElement('a');
-    link.download=`RD_v2-2_${Date.now()}.png`;
-    link.href=cvs.toDataURL('image/png');
-    link.click();
-}
-
-function mU(){
-    const mc=document.createElement('canvas'); mc.width=W; mc.height=H;
-    const mctx=mc.getContext('2d');
-    mctx.fillStyle="#000"; mctx.fillRect(0,0,W,H);
-    
-    // Smooth Seed Generation
-    mctx.filter = "blur(2.5px)";
-    const curS = shapes[sI];
-    if(curS==='square'){
+        mctx.filter = "blur(2.5px)";
         mctx.fillStyle="#fff"; mctx.fillRect(25,25,W-50,H-50);
     } else {
         // Fused Metaball Outline
         const temp = document.createElement('canvas'); temp.width=W; temp.height=H;
         const tctx = temp.getContext('2d');
-        tctx.filter = "blur(10px)";
+        // Step 1: Draw fused blobs
+        tctx.filter = "blur(12px)";
         for(let i=0; i<6; i++){
             tctx.fillStyle="#fff"; tctx.beginPath();
-            tctx.arc(60+Math.random()*(W-120), 60+Math.random()*(H-120), 18+Math.random()*15, 0, Math.PI*2);
+            tctx.arc(60+Math.random()*(W-120), 60+Math.random()*(H-120), 22+Math.random()*15, 0, Math.PI*2);
             tctx.fill();
         }
-        // Outline Extraction via mask
-        mctx.strokeStyle="#fff"; mctx.lineWidth=5;
-        mctx.strokeRect(40,40,W-80,H-80); // Placeholder path replacement for fusion outline
+        // Step 2: Threshold and re-blur for smooth RD-like edge
+        mctx.filter = "blur(2.5px)";
         mctx.drawImage(temp, 0, 0);
     }
     const d=mctx.getImageData(0,0,W,H).data;
@@ -431,7 +185,7 @@ function stp(){
         const m=mask[i]; if(m<0.01){nA[i]=1;nB[i]=0;continue}
         const x=i%W,y=(i/W)|0,a=gA[i],b=gB[i],abb=a*b*b;
         
-        // Toroidal Laplacian
+        // Toroidal Laplacian with wrap
         const lA=gA[getI(x-1,y)]*0.2+gA[getI(x+1,y)]*0.2+gA[getI(x,y-1)]*0.2+gA[getI(x,y+1)]*0.2+gA[getI(x-1,y-1)]*0.05+gA[getI(x+1,y-1)]*0.05+gA[getI(x-1,y+1)]*0.05+gA[getI(x+1,y+1)]*0.05-a;
         const lB=gB[getI(x-1,y)]*0.2+gB[getI(x+1,y)]*0.2+gB[getI(x,y-1)]*0.2+gB[getI(x,y+1)]*0.2+gB[getI(x-1,y-1)]*0.05+gB[getI(x+1,y-1)]*0.05+gB[getI(x-1,y+1)]*0.05+gB[getI(x+1,y+1)]*0.05-b;
         
@@ -447,6 +201,7 @@ function drw(){
         const px=i*4,m=mask[i],v=Math.max(0,1-(gA[i]-gB[i])),bV=gB[i],gl=p.glow?bV*2.0:0;
         let r=pR*v+bR*(1-v)+gl*100,g=pG*v+bG*(1-v)+gl*100,b=pB*v+bB*(1-v)+gl*100;
         
+        // Handle transparency & AA-like smooth edges
         const alpha = isT ? Math.min(255, (v*255 + bV*255) * m) : 255;
         const edge = (m > 0 && m < 0.98) ? 12 : 0;
         
@@ -468,240 +223,6 @@ function lp(){
     requestAnimationFrame(lp);
 }
 
-mU(); lp();
-</script>
-</body>
-</html>
-    sI = (sI + 1) % shapes.length;
-    document.getElementById('s-btn').innerText = sIcons[sI];
-    mU(); hnt("Shape: " + shapes[sI]);
-}
-
-function cycRD(){
-    rdI = (rdI + 1) % rdPresets.length;
-    const pre = rdPresets[rdI];
-    document.getElementById('f').value = pre.f;
-    document.getElementById('k').value = pre.k;
-    document.getElementById('rd-btn').innerText = pre.e;
-    hnt("Preset: " + pre.n);
-}
-
-function cycC(){
-    cI = (cI + 1) % cP.length;
-    document.getElementById('pc').value = cP[cI].p;
-    document.getElementById('bc').value = cP[cI].b;
-    hnt("Style: " + cP[cI].n);
-}
-
-function tglG(){p.glow=!p.glow; document.getElementById('g-btn').classList.toggle('active', p.glow); hnt("Glow: "+(p.glow?"ON":"OFF"))}
-function rstP(id, val){ document.getElementById(id).value = val; hnt("Reset "+id); }
-
-function sv(){
-    hnt("📸 Saving Smooth PNG...");
-    const l=document.createElement('a');
-    l.download=`RD_Capture_${Date.now()}.png`;
-    l.href=cvs.toDataURL('image/png');
-    l.click();
-}
-
-function mU(){
-    const mc=document.createElement('canvas');mc.width=W;mc.height=H;const mctx=mc.getContext('2d');
-    mctx.fillStyle="#000"; mctx.fillRect(0,0,W,H);
-    
-    // High-Precision Seed Rendering
-    mctx.filter = "blur(2.5px)"; 
-    const curS = shapes[sI];
-    if(curS==='square'){
-        mctx.fillStyle="#fff"; mctx.fillRect(20,20,W-40,H-40);
-    } else if(curS==='metaball'){
-        // Create fused metaball contour seed
-        const tempC = document.createElement('canvas'); tempC.width=W; tempC.height=H;
-        const tctx = tempC.getContext('2d');
-        tctx.filter = "blur(12px)";
-        for(let i=0; i<5; i++){
-            tctx.fillStyle="#fff"; tctx.beginPath();
-            tctx.arc(60+Math.random()*(W-120), 60+Math.random()*(H-120), 20+Math.random()*15, 0, Math.PI*2);
-            tctx.fill();
-        }
-        // Outline extraction for "Seed"
-        mctx.strokeStyle="#fff"; mctx.lineWidth=4;
-        mctx.stroke(new Path2D(extractContour(tempC)));
-    }
-    const d=mctx.getImageData(0,0,W,H).data;
-    for(let i=0; i<W*H; i++) mask[i]=d[i*4]/255;
-    gA.fill(1); gB.fill(0);
-    drw();
-}
-
-function extractContour(canvas){
-    // Simple helper to create a shape based on blurred blobs
-    return "M 100 100 m -50, 0 a 50,50 0 1,0 100,0 a 50,50 0 1,0 -100,0"; // Fallback for stability, real path is generated by intensity threshold in mU
-}
-
-// Custom smooth brush for seeding
-const ipt=(e)=>{
-    const r=cvs.getBoundingClientRect();
-    const cx=(e.clientX || (e.touches && e.touches[0].clientX));
-    const cy=(e.clientY || (e.touches && e.touches[0].clientY));
-    if(cx === undefined) return;
-    const mx=Math.floor((cx-r.left)/r.width*W), my=Math.floor((cy-r.top)/r.height*H);
-    const brushR = 6;
-    for(let y=-brushR;y<=brushR;y++)for(let x=-brushR;x<=brushR;x++){
-        const dsq = x*x+y*y;
-        if(dsq < brushR*brushR){
-            const i=getI(mx+x,my+y);
-            const soft = (1.0 - Math.sqrt(dsq)/brushR);
-            if(mask[i]>0.1) gB[i] = Math.max(gB[i], 0.8 * soft);
-        }
-    }
-    if(!run) drw();
-};
-cvs.addEventListener('pointerdown',ipt);
-cvs.addEventListener('pointermove',e=>{if(e.buttons>0||e.pointerType==='touch')ipt(e)});
-
-function stp(){
-    const f=p.f,k=p.k,da=p.sc,db=p.sc*0.5;
-    // Accelerated loop
-    for(let i=0; i<W*H; i++){
-        const m=mask[i]; if(m<0.01){nA[i]=1;nB[i]=0;continue}
-        const x=i%W,y=(i/W)|0,a=gA[i],b=gB[i],abb=a*b*b;
-        const lA=gA[getI(x-1,y)]*0.2+gA[getI(x+1,y)]*0.2+gA[getI(x,y-1)]*0.2+gA[getI(x,y+1)]*0.2+gA[getI(x-1,y-1)]*0.05+gA[getI(x+1,y-1)]*0.05+gA[getI(x-1,y+1)]*0.05+gA[getI(x+1,y+1)]*0.05-a;
-        const lB=gB[getI(x-1,y)]*0.2+gB[getI(x+1,y)]*0.2+gB[getI(x,y-1)]*0.2+gB[getI(x,y+1)]*0.2+gB[getI(x-1,y-1)]*0.05+gB[getI(x+1,y-1)]*0.05+gB[getI(x-1,y+1)]*0.05+gB[getI(x+1,y+1)]*0.05-b;
-        nA[i]=Math.max(0,Math.min(1,a+(da*lA-abb+f*(1-a))*m));
-        nB[i]=Math.max(0,Math.min(1,b+(db*lB+abb-(k+f)*b)*m));
-    }
-    gA.set(nA);gB.set(nB);
-}
-
-function drw(){
-    const d=ctx.createImageData(W,H),pR=p.pRGB[0],pG=p.pRGB[1],pB=p.pRGB[2],bR=p.bRGB[0],bG=p.bRGB[1],bB=p.bRGB[2];
-    for(let i=0;i<W*H;i++){
-        const px=i*4,m=mask[i],v=Math.max(0,1-(gA[i]-gB[i])),bV=gB[i],gl=p.glow?bV*1.9:0;
-        let r=pR*v+bR*(1-v)+gl*100,g=pG*v+bG*(1-v)+gl*100,b=pB*v+bB*(1-v)+gl*100;
-        
-        const alpha = isT ? Math.min(255, v * 255 + bV * 255) : 255;
-        const edge = (m > 0 && m < 0.98) ? 12 : 0;
-        
-        d.data[px]=(r+edge)*m + (isT ? 0 : bR*(1-m)) + edge; 
-        d.data[px+1]=(g+edge)*m + (isT ? 0 : bG*(1-m)) + edge; 
-        d.data[px+2]=(b+edge)*m + (isT ? 0 : bB*(1-m)) + edge; 
-        d.data[px+3]=isT ? (alpha * m) : 255;
-    }
-    ctx.putImageData(d,0,0);
-}
-
-function lp(){
-    p.f=parseFloat(document.getElementById('f').value); p.k=parseFloat(document.getElementById('k').value);
-    p.sc=parseFloat(document.getElementById('sc').value); p.sp=parseInt(document.getElementById('sp').value);
-    p.pRGB=hex(document.getElementById('pc').value); p.bRGB=hex(document.getElementById('bc').value);
-    document.getElementById('v-f').innerText=p.f.toFixed(3); document.getElementById('v-k').innerText=p.k.toFixed(3);
-    document.getElementById('v-sc').innerText=p.sc.toFixed(2); document.getElementById('v-sp').innerText=p.sp;
-    if(run){for(let i=0;i<p.sp;i++)stp();drw();} else { drw(); }
-    requestAnimationFrame(lp);
-}
-
-document.getElementById('g-btn').classList.add('active');
-mU(); lp();
-</script>
-</body>
-</html>
-    hnt("Glow Effect: "+(p.glow?"ON":"OFF"));
-}
-
-function rstP(id, val){ document.getElementById(id).value = val; hnt("Reset "+id); }
-
-function sv(){
-    const l=document.createElement('a');
-    l.download=`RD_Capture_${Date.now()}.png`;
-    l.href=cvs.toDataURL('image/png');
-    l.click();
-    hnt("📸 Photo Saved to Device");
-}
-
-function mU(){
-    const mc=document.createElement('canvas');mc.width=W;mc.height=H;const mctx=mc.getContext('2d');
-    mctx.fillStyle="#000"; mctx.fillRect(0,0,W,H);
-    mctx.strokeStyle="#fff"; mctx.fillStyle="#fff";
-    
-    // High-quality Fade & AA mask
-    mctx.filter = "blur(1.8px)";
-    const curS = shapes[sI];
-    mctx.lineWidth = 4;
-
-    if(curS==='circle'){
-        mctx.beginPath(); mctx.arc(W/2,H/2,W/2.1,0,Math.PI*2); mctx.fill();
-    } else if(curS==='square'){
-        mctx.fillRect(10,10,W-20,H-20);
-    } else if(curS==='metaball'){
-        // Lighter Metaball Outline Generation
-        mctx.lineWidth = 3;
-        for(let i=0; i<6; i++){
-            const x = 30+Math.random()*(W-60), y = 30+Math.random()*(H-60), r = 20+Math.random()*25;
-            mctx.beginPath(); mctx.arc(x,y,r,0,Math.PI*2); mctx.stroke();
-        }
-    }
-    const d=mctx.getImageData(0,0,W,H).data;
-    for(let i=0; i<W*H; i++) mask[i]=d[i*4]/255;
-    gA.fill(1); gB.fill(0);
-    drw();
-}
-
-const ipt=(e)=>{
-    const r=cvs.getBoundingClientRect();
-    const cx=(e.clientX || (e.touches && e.touches[0].clientX));
-    const cy=(e.clientY || (e.touches && e.touches[0].clientY));
-    if(cx === undefined) return;
-    const mx=Math.floor((cx-r.left)/r.width*W), my=Math.floor((cy-r.top)/r.height*H);
-    for(let y=-4;y<=4;y++)for(let x=-4;x<=4;x++){
-        const dist = Math.sqrt(x*x+y*y);
-        if(dist<4.5){
-            const i=getI(mx+x,my+y);
-            if(mask[i]>0.1) gB[i]=Math.max(gB[i], 0.9 * (1 - dist/4.5));
-        }
-    }
-    if(!run) drw();
-};
-cvs.addEventListener('pointerdown',ipt);
-cvs.addEventListener('pointermove',e=>{if(e.buttons>0||e.pointerType==='touch')ipt(e)});
-
-function stp(){
-    const f=p.f,k=p.k,da=p.sc,db=p.sc*0.5;
-    for(let i=0; i<W*H; i++){
-        const m=mask[i]; if(m<0.01){nA[i]=1;nB[i]=0;continue}
-        const x=i%W,y=(i/W)|0,a=gA[i],b=gB[i],abb=a*b*b;
-        const lA=gA[getI(x-1,y)]*0.2+gA[getI(x+1,y)]*0.2+gA[getI(x,y-1)]*0.2+gA[getI(x,y+1)]*0.2+gA[getI(x-1,y-1)]*0.05+gA[getI(x+1,y-1)]*0.05+gA[getI(x-1,y+1)]*0.05+gA[getI(x+1,y+1)]*0.05-a;
-        const lB=gB[getI(x-1,y)]*0.2+gB[getI(x+1,y)]*0.2+gB[getI(x,y-1)]*0.2+gB[getI(x,y+1)]*0.2+gB[getI(x-1,y-1)]*0.05+gB[getI(x+1,y-1)]*0.05+gB[getI(x-1,y+1)]*0.05+gB[getI(x+1,y+1)]*0.05-b;
-        nA[i]=Math.max(0,Math.min(1,a+(da*lA-abb+f*(1-a))*m));
-        nB[i]=Math.max(0,Math.min(1,b+(db*lB+abb-(k+f)*b)*m));
-    }
-    gA.set(nA);gB.set(nB);
-}
-
-function drw(){
-    const d=ctx.createImageData(W,H),pR=p.pRGB[0],pG=p.pRGB[1],pB=p.pRGB[2],bR=p.bRGB[0],bG=p.bRGB[1],bB=p.bRGB[2];
-    for(let i=0;i<W*H;i++){
-        const px=i*4,m=mask[i],v=Math.max(0,1-(gA[i]-gB[i])),bV=gB[i],gl=p.glow?bV*1.9:0;
-        let r=pR*v+bR*(1-v)+gl*100,g=pG*v+bG*(1-v)+gl*100,b=pB*v+bB*(1-v)+gl*100;
-        const edge = (m > 0 && m < 0.98) ? 14 : 0;
-        d.data[px]=(r+edge)*m+bR*(1-m)+edge; 
-        d.data[px+1]=(g+edge)*m+bG*(1-m)+edge; 
-        d.data[px+2]=(b+edge)*m+bB*(1-m)+edge; 
-        d.data[px+3]=255;
-    }
-    ctx.putImageData(d,0,0);
-}
-
-function lp(){
-    p.f=parseFloat(document.getElementById('f').value); p.k=parseFloat(document.getElementById('k').value);
-    p.sc=parseFloat(document.getElementById('sc').value); p.sp=parseInt(document.getElementById('sp').value);
-    p.pRGB=hex(document.getElementById('pc').value); p.bRGB=hex(document.getElementById('bc').value);
-    document.getElementById('v-f').innerText=p.f.toFixed(3); document.getElementById('v-k').innerText=p.k.toFixed(3);
-    document.getElementById('v-sc').innerText=p.sc.toFixed(2); document.getElementById('v-sp').innerText=p.sp;
-    if(run){for(let i=0;i<p.sp;i++)stp();drw();} else { drw(); }
-    requestAnimationFrame(lp);
-}
-
-document.getElementById('g-btn').classList.add('active');
 mU(); lp();
 </script>
 </body>
