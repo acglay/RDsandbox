@@ -3,12 +3,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-    <title>RD Sandbox v2.5 Master</title>
+    <title>RD Sandbox v2.6 Master</title>
     <style>
         :root { --bg: #000; --ui: #151515; --acc: #00d4ff; }
         body { margin: 0; background: var(--bg); color: #eee; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
-        /* 1:1 Responsive Square Canvas */
         #canvas-wrap { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
         canvas { 
             width: 95vmin; height: 95vmin; 
@@ -16,7 +15,6 @@
             background: transparent; border: 1px solid #222; 
         }
         
-        /* HUD - Vertical on the right of the canvas */
         #hud { position: absolute; right: calc(50% - 47.5vmin + 10px); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 100; }
         .hud-btn { 
             width: 44px; height: 44px; border-radius: 12px; border: 1px solid #444; 
@@ -27,7 +25,6 @@
 
         #hint { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); padding: 8px 16px; border-radius: 20px; font-size: 11px; opacity: 0; transition: 0.3s; pointer-events: none; border: 1px solid var(--acc); z-index: 200; white-space: nowrap; }
 
-        /* Sliders Area - Lifted for better visibility */
         #ui { background: var(--ui); padding: 15px 15px 45px 15px; border-top: 1px solid #333; z-index: 150; box-sizing: border-box; overflow-y: auto; }
         .sliders { display: flex; flex-direction: column; gap: 8px; }
         .row { display: flex; align-items: center; gap: 8px; font-size: 10px; }
@@ -36,14 +33,13 @@
         input[type="color"] { width: 40px; height: 25px; border: none; background: transparent; padding: 0; cursor: pointer; }
         .val { color: var(--acc); min-width: 40px; text-align: right; font-family: monospace; font-size: 11px; }
         .res-btn { background: #222; border: none; color: #555; font-size: 13px; padding: 0 6px; cursor: pointer; border-radius: 4px; }
-        .res-btn:active { color: #fff; }
 
         .v { position: absolute; top: 5px; left: 10px; font-size: 10px; color: #333; letter-spacing: 1px; }
     </style>
 </head>
 <body>
     <div id="canvas-wrap">
-        <div class="v">ver 2.5 Master</div><div id="hint"></div>
+        <div class="v">ver 2.6 Master</div><div id="hint"></div>
         <canvas id="cvs"></canvas>
         <div id="hud">
             <button class="hud-btn" id="p-btn" onclick="tglR()">▶️</button>
@@ -79,7 +75,7 @@ const W=200,H=200,cvs=document.getElementById('cvs'),ctx=cvs.getContext('2d',{al
 cvs.width=W; cvs.height=H;
 
 let gA=new Float32Array(W*H).fill(1), gB=new Float32Array(W*H).fill(0), nA=new Float32Array(W*H), nB=new Float32Array(W*H), mask=new Float32Array(W*H).fill(1);
-let run=false, cI=4, sI=0, rdI=0, isT=true; // Default Forest & Trans ON
+let run=false, cI=4, sI=1, rdI=0, isT=true; 
 
 const shapes = ['square', 'metaball'];
 const sIcons = ['⬜', '🎲'];
@@ -96,18 +92,18 @@ const cP=[
 
 const p={f:0.037, k:0.060, sp:25, glow:true, sc:0.5, off:0.0, gam:0.5, pRGB:[255,255,255], bRGB:[0,34,0]};
 
-const hnt=(t)=>{const h=document.getElementById('hint');h.innerText=t;h.style.opacity=1;setTimeout(()=>h.style.opacity=0,1000)};
+const hnt=(t)=>{const h=document.getElementById('hint');h.innerText=t;h.style.opacity=1;setTimeout(()=>h.style.opacity=0,1200)};
 const getI=(x,y)=>((x+W)%W)+((y+H)%H)*W;
 const hex=(h)=>h.match(/[A-Za-z0-9]{2}/g).map(v=>parseInt(v,16));
 
 function tglR(){run=!run;document.getElementById('p-btn').innerText=run?"⏸️":"▶️";hnt(run?"Start Simulation":"Pause Simulation")}
 function clr(){gA.fill(1);gB.fill(0);drw();hnt("Clear Canvas")}
-function tglT(){isT=!isT;document.getElementById('t-btn').classList.toggle('active',isT);hnt(isT?"Transparent ON":"Transparent OFF")}
+function tglT(){isT=!isT;document.getElementById('t-btn').classList.toggle('active',isT);hnt(isT?"Transparency ON":"Transparency OFF")}
 
 function cycS(){
     sI = (sI + 1) % shapes.length;
     document.getElementById('s-btn').innerText = sIcons[sI];
-    mU(); hnt("Seed shape: " + shapes[sI]);
+    mU(); hnt("Seed Shape: " + shapes[sI]);
 }
 
 function cycRD(){
@@ -130,9 +126,9 @@ function tglG(){p.glow=!p.glow; document.getElementById('g-btn').classList.toggl
 function rstP(id, val){ document.getElementById(id).value = val; hnt("Reset "+id); }
 
 function sv(){
-    hnt("📸 Saving Smooth PNG...");
+    hnt("📸 Saving High-Quality PNG...");
     const link=document.createElement('a');
-    link.download=`RD_v2.5_${Date.now()}.png`;
+    link.download=`RD_v2.6_${Date.now()}.png`;
     link.href=cvs.toDataURL('image/png');
     link.click();
 }
@@ -143,26 +139,52 @@ function mU(){
     mctx.fillStyle="#000"; mctx.fillRect(0,0,W,H);
     
     const curS = shapes[sI];
+    
+    // Internal Helper: Uniform Density Seed Generation
+    const tempC = document.createElement('canvas'); tempC.width=W; tempC.height=H;
+    const tctx = tempC.getContext('2d');
+    tctx.fillStyle="#fff";
+
     if(curS==='square'){
-        // smoothrendering for overall mask (AA & Fade)
-        mctx.filter = "blur(1.8px)"; 
-        mctx.fillStyle="#fff"; mctx.fillRect(30,30,W-60,H-60);
+        tctx.fillRect(25,25,W-50,H-50);
     } else {
-        // metaball: Use radial gradients for true blob fusion
-        const tempC = document.createElement('canvas'); tempC.width=W; tempC.height=H;
-        const tctx = tempC.getContext('2d');
-        
-        for(let i=0; i<6; i++){
-            const x = 50+Math.random()*(W-100), y = 50+Math.random()*(H-100), r = 30+Math.random()*15;
-            const grad = tctx.createRadialGradient(x,y,0,x,y,r);
-            grad.addColorStop(0, "white"); grad.addColorStop(1, "transparent");
-            tctx.fillStyle = grad; tctx.beginPath(); tctx.arc(x,y,r,0,Math.PI*2); tctx.fill();
+        // Dynamic Meta-Spine Algorithm
+        const startX = -20 + Math.random()*50, startY = 20 + Math.random()*160;
+        const cpX = 100 + (Math.random()-0.5)*150, cpY = 100 + (Math.random()-0.5)*150;
+        const endX = 220 - Math.random()*50, endY = 20 + Math.random()*160;
+
+        const getBezier = (t) => ({
+            x: (1-t)**2 * startX + 2*(1-t)*t * cpX + t**2 * endX,
+            y: (1-t)**2 * startY + 2*(1-t)*t * cpY + t**2 * endY
+        });
+
+        // 1. Scatter Blobs along the Spine
+        const mainSeeds = [];
+        for(let i=0; i<=6; i++){
+            const pos = getBezier(i/6);
+            const r = 18 + Math.random()*12;
+            mainSeeds.push({x:pos.x, y:pos.y, r:r});
+            tctx.beginPath(); tctx.arc(pos.x, pos.y, r, 0, Math.PI*2); tctx.fill();
         }
-        
-        // Threshold and re-blur for smooth edge
-        mctx.filter = "blur(1.8px)"; 
-        mctx.drawImage(tempC, 0, 0); 
+
+        // 2. Scatter Surface detail seeds
+        mainSeeds.forEach(s => {
+            const detailCount = 3 + Math.floor(Math.random()*4);
+            for(let j=0; j<detailCount; j++){
+                const ang = Math.random()*Math.PI*2;
+                const dist = s.r * (0.8 + Math.random()*0.4);
+                const rx = s.x + Math.cos(ang)*dist;
+                const ry = s.y + Math.sin(ang)*dist;
+                const rr = 6 + Math.random()*10;
+                tctx.beginPath(); tctx.arc(rx, ry, rr, 0, Math.PI*2); tctx.fill();
+            }
+        });
     }
+
+    // Precise 4px Blur Fade (SDF-like)
+    mctx.filter = "blur(2px)"; // 2px blur creates roughly 4px fade ramp
+    mctx.drawImage(tempC, 0, 0);
+    
     const d=mctx.getImageData(0,0,W,H).data;
     for(let i=0; i<W*H; i++) mask[i]=d[i*4]/255;
     gA.fill(1); gB.fill(0);
@@ -208,7 +230,6 @@ function drw(){
     for(let i=0;i<W*H;i++){
         const px=i*4,m=mask[i];
         
-        // Reaction Pattern Post-Process (Offset & Gamma correction)
         let v = (1 - (gA[i] - gB[i])) + offset;
         v = Math.max(0, Math.min(1, v));
         if(v > 0) v = Math.pow(v, gamma);
@@ -242,7 +263,6 @@ function lp(){
     requestAnimationFrame(lp);
 }
 
-// Ensure color values are reflected on startup
 document.getElementById('pc').value = "#ffffff";
 document.getElementById('bc').value = "#002200";
 mU(); lp();
