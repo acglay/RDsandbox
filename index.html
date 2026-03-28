@@ -3,49 +3,51 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-    <title>RD Sandbox v1.8</title>
+    <title>RD Sandbox v1.9</title>
     <style>
-        :root { --bg: #000; --ui: #151515; --acc: #00d4ff; }
+        :root { --bg: #000; --ui: #121212; --acc: #00d4ff; --glow-bg: #004455; }
         body { margin: 0; background: var(--bg); color: #eee; font-family: sans-serif; overflow: hidden; display: flex; flex-direction: column; height: 100vh; }
         
         #canvas-wrap { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         canvas { 
             width: 95vmin; height: 95vmin; 
             touch-action: none; image-rendering: auto; 
-            background: #050505; border: 1px solid #222; 
+            background: #020202; border: 1px solid #1a1a1a; 
         }
         
-        /* Floating Buttons HUD */
-        #hud { position: absolute; right: calc(50% - 47vmin + 8px); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 100; }
+        /* Floating HUD - Right Centered */
+        #hud { position: absolute; right: calc(50% - 47.5vmin + 8px); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 100; }
         .hud-btn { 
-            width: 42px; height: 42px; border-radius: 10px; border: 1px solid #444; 
-            background: rgba(25, 25, 25, 0.8); color: #fff; font-size: 20px; 
-            display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); transition: 0.2s;
+            width: 44px; height: 44px; border-radius: 10px; border: 1px solid #333; 
+            background: rgba(20, 20, 20, 0.85); color: #fff; font-size: 20px; 
+            display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); transition: 0.2s;
         }
-        .hud-btn.active { background: var(--acc); color: #000; border-color: #fff; }
+        .hud-btn.active { background: var(--glow-bg); color: var(--acc); border-color: var(--acc); box-shadow: 0 0 10px var(--glow-bg); }
 
-        #hint { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); padding: 6px 16px; border-radius: 20px; font-size: 11px; opacity: 0; transition: 0.3s; pointer-events: none; border: 1px solid var(--acc); z-index: 200; white-space: nowrap;}
+        #hint { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.9); padding: 8px 18px; border-radius: 20px; font-size: 11px; opacity: 0; transition: 0.3s; pointer-events: none; border: 1px solid var(--acc); z-index: 200; white-space: nowrap;}
 
         /* Bottom UI Panel */
-        #ui { background: var(--ui); padding: 12px 15px; border-top: 1px solid #333; z-index: 150; box-sizing: border-box; }
-        .sliders { display: flex; flex-direction: column; gap: 8px; }
-        .row { display: flex; align-items: center; gap: 8px; font-size: 11px; }
-        .row label { width: 45px; color: #888; }
-        input[type="range"] { flex: 1; accent-color: var(--acc); height: 20px; }
-        .val { color: var(--acc); min-width: 40px; text-align: right; font-family: monospace; font-size: 12px; }
-        .res-btn { background: #333; border: none; color: #666; font-size: 14px; padding: 0 5px; cursor: pointer; }
+        #ui { background: var(--ui); padding: 15px 20px 25px 20px; border-top: 1px solid #222; z-index: 150; box-sizing: border-box; }
+        .sliders { display: flex; flex-direction: column; gap: 12px; }
+        .row { display: flex; align-items: center; gap: 12px; font-size: 11px; }
+        .row label { width: 45px; color: #777; font-weight: bold; }
+        input[type="range"] { flex: 1; accent-color: var(--acc); height: 20px; cursor: pointer; }
+        .val { color: var(--acc); min-width: 40px; text-align: right; font-family: 'Courier New', monospace; font-size: 12px; }
+        .res-btn { background: #222; border: none; color: #555; font-size: 14px; padding: 0 8px; cursor: pointer; border-radius: 4px; }
+        .res-btn:active { color: #fff; }
 
-        .v { position: absolute; top: 5px; left: 8px; font-size: 9px; color: #333; }
+        .v { position: absolute; top: 5px; left: 8px; font-size: 9px; color: #222; letter-spacing: 1px; }
     </style>
 </head>
 <body>
     <div id="canvas-wrap">
-        <div class="v">v1.8-pro</div><div id="hint"></div>
+        <div class="v">v1.9-master</div><div id="hint"></div>
         <canvas id="cvs"></canvas>
         <div id="hud">
             <button class="hud-btn" id="p-btn" onclick="tglR()">▶️</button>
             <button class="hud-btn" id="s-btn" onclick="cycS()">⭕</button>
-            <button class="hud-btn" onclick="cycRD()">🧬</button> <button class="hud-btn" onclick="cycC()">🌈</button>
+            <button class="hud-btn" onclick="cycRD()">🧬</button>
+            <button class="hud-btn" onclick="cycC()">🌈</button>
             <button class="hud-btn" onclick="tglG()" id="g-btn">✨</button>
             <button class="hud-btn" onclick="clr()">🔄</button>
             <button class="hud-btn" onclick="sv()">📸</button>
@@ -54,8 +56,8 @@
 
     <div id="ui">
         <div class="sliders">
-            <div class="row"><label>Speed</label><input type="range" id="sp" min="1" max="25" value="8"><span class="val" id="v-sp"></span><button class="res-btn" onclick="rstP('sp',8)">↺</button></div>
-            <div class="row"><label>Scale</label><input type="range" id="sc" min="0.1" max="1.0" step="0.1" value="1.0"><span class="val" id="v-sc"></span><button class="res-btn" onclick="rstP('sc',1.0)">↺</button></div>
+            <div class="row"><label>Speed</label><input type="range" id="sp" min="1" max="100" value="25"><span class="val" id="v-sp"></span><button class="res-btn" onclick="rstP('sp',25)">↺</button></div>
+            <div class="row"><label>Scale</label><input type="range" id="sc" min="0.1" max="1.0" step="0.05" value="0.5"><span class="val" id="v-sc"></span><button class="res-btn" onclick="rstP('sc',0.5)">↺</button></div>
             <div class="row"><label>Feed</label><input type="range" id="f" min="0.01" max="0.1" step="0.001" value="0.037"><span class="val" id="v-f"></span><button class="res-btn" onclick="rstP('f',0.037)">↺</button></div>
             <div class="row"><label>Kill</label><input type="range" id="k" min="0.01" max="0.1" step="0.001" value="0.060"><span class="val" id="v-k"></span><button class="res-btn" onclick="rstP('k',0.060)">↺</button></div>
         </div>
@@ -72,14 +74,11 @@ let run=false, cI=0, sI=0, rdI=0;
 
 const shapes = ['circle', 'square', 'metaball'];
 const sIcons = ['⭕', '⬜', '🎲'];
-const p={f:0.037, k:0.060, sp:8, glow:true, sc:1.0, pRGB:[0,255,255], bRGB:[26,26,46]};
+const p={f:0.037, k:0.060, sp:25, glow:true, sc:0.5, pRGB:[0,255,255], bRGB:[26,26,46]};
 
 const rdPresets = [
-    {f:0.037, k:0.060, n:"Mitosis (Cell)"},
-    {f:0.054, k:0.062, n:"Coral (Maze)"},
-    {f:0.035, k:0.060, n:"Bacteria"},
-    {f:0.018, k:0.051, n:"Spirals"},
-    {f:0.054, k:0.061, n:"Fingerprint"}
+    {f:0.037, k:0.060, n:"Mitosis (Cell)"}, {f:0.054, k:0.062, n:"Coral (Maze)"},
+    {f:0.035, k:0.060, n:"Bacteria"}, {f:0.018, k:0.051, n:"Spirals"}, {f:0.054, k:0.061, n:"Fingerprint"}
 ];
 
 const cP=[
@@ -88,11 +87,11 @@ const cP=[
     {p:"#ffffff",b:"#002200",n:"Forest"},{p:"#ff4400",b:"#221100",n:"Magma"}
 ];
 
-const hnt=(t)=>{const h=document.getElementById('hint');h.innerText=t;h.style.opacity=1;setTimeout(()=>h.style.opacity=0,1000)};
+const hnt=(t)=>{const h=document.getElementById('hint');h.innerText=t;h.style.opacity=1;setTimeout(()=>h.style.opacity=0,1200)};
 const getI=(x,y)=>((x+W)%W)+((y+H)%H)*W;
 const hex=(h)=>h.match(/[A-Za-z0-9]{2}/g).map(v=>parseInt(v,16));
 
-function tglR(){run=!run;document.getElementById('p-btn').innerText=run?"⏸️":"▶️";hnt(run?"Start":"Pause")}
+function tglR(){run=!run;document.getElementById('p-btn').innerText=run?"⏸️":"▶️";hnt(run?"Start Simulation":"Pause Simulation")}
 function clr(){gA.fill(1);gB.fill(0);drw();hnt("Clear Canvas")}
 
 function cycS(){
@@ -113,44 +112,45 @@ function cycC(){
     cI = (cI + 1) % cP.length;
     document.getElementById('pc').value = cP[cI].p;
     document.getElementById('bc').value = cP[cI].b;
-    hnt("Color: " + cP[cI].n);
+    hnt("Style: " + cP[cI].n);
 }
 
 function tglG(){
     p.glow=!p.glow; 
     document.getElementById('g-btn').classList.toggle('active', p.glow);
-    hnt("Glow: "+(p.glow?"ON":"OFF"));
+    hnt("Glow Effect: "+(p.glow?"ON":"OFF"));
 }
 
 function rstP(id, val){ document.getElementById(id).value = val; hnt("Reset "+id); }
 
 function sv(){
     const l=document.createElement('a');
-    l.download=`RD_${Date.now()}.png`;
-    l.href=cvs.toDataURL();
+    l.download=`RD_Capture_${Date.now()}.png`;
+    l.href=cvs.toDataURL('image/png');
     l.click();
-    hnt("📸 Photo Saved");
+    hnt("📸 Photo Saved to Device");
 }
 
 function mU(){
     const mc=document.createElement('canvas');mc.width=W;mc.height=H;const mctx=mc.getContext('2d');
-    mctx.fillStyle="#000";mctx.fillRect(0,0,W,H);
-    mctx.fillStyle="#fff";
+    mctx.fillStyle="#000"; mctx.fillRect(0,0,W,H);
+    mctx.strokeStyle="#fff"; mctx.fillStyle="#fff";
     
-    // Smooth rendering for mask
-    mctx.filter = "blur(1.5px)";
+    // High-quality Fade & AA mask
+    mctx.filter = "blur(1.8px)";
     const curS = shapes[sI];
+    mctx.lineWidth = 4;
+
     if(curS==='circle'){
-        mctx.beginPath(); mctx.arc(W/2,H/2,W/2.6,0,Math.PI*2); mctx.fill();
+        mctx.beginPath(); mctx.arc(W/2,H/2,W/2.1,0,Math.PI*2); mctx.fill();
     } else if(curS==='square'){
-        mctx.fillRect(38,38,W-76,H-76);
+        mctx.fillRect(10,10,W-20,H-20);
     } else if(curS==='metaball'){
-        // Lighter Metaball: Use radial gradients instead of pixel loops
-        for(let i=0; i<5; i++){
-            const x = 50+Math.random()*(W-100), y = 50+Math.random()*(H-100), r = 25+Math.random()*20;
-            const grad = mctx.createRadialGradient(x,y,0,x,y,r);
-            grad.addColorStop(0, "white"); grad.addColorStop(1, "transparent");
-            mctx.fillStyle = grad; mctx.beginPath(); mctx.arc(x,y,r,0,Math.PI*2); mctx.fill();
+        // Lighter Metaball Outline Generation
+        mctx.lineWidth = 3;
+        for(let i=0; i<6; i++){
+            const x = 30+Math.random()*(W-60), y = 30+Math.random()*(H-60), r = 20+Math.random()*25;
+            mctx.beginPath(); mctx.arc(x,y,r,0,Math.PI*2); mctx.stroke();
         }
     }
     const d=mctx.getImageData(0,0,W,H).data;
@@ -166,9 +166,10 @@ const ipt=(e)=>{
     if(cx === undefined) return;
     const mx=Math.floor((cx-r.left)/r.width*W), my=Math.floor((cy-r.top)/r.height*H);
     for(let y=-4;y<=4;y++)for(let x=-4;x<=4;x++){
-        if(Math.sqrt(x*x+y*y)<4){
+        const dist = Math.sqrt(x*x+y*y);
+        if(dist<4.5){
             const i=getI(mx+x,my+y);
-            if(mask[i]>0.1) gB[i]=0.85;
+            if(mask[i]>0.1) gB[i]=Math.max(gB[i], 0.9 * (1 - dist/4.5));
         }
     }
     if(!run) drw();
@@ -192,9 +193,9 @@ function stp(){
 function drw(){
     const d=ctx.createImageData(W,H),pR=p.pRGB[0],pG=p.pRGB[1],pB=p.pRGB[2],bR=p.bRGB[0],bG=p.bRGB[1],bB=p.bRGB[2];
     for(let i=0;i<W*H;i++){
-        const px=i*4,m=mask[i],v=Math.max(0,1-(gA[i]-gB[i])),bV=gB[i],gl=p.glow?bV*1.8:0;
+        const px=i*4,m=mask[i],v=Math.max(0,1-(gA[i]-gB[i])),bV=gB[i],gl=p.glow?bV*1.9:0;
         let r=pR*v+bR*(1-v)+gl*100,g=pG*v+bG*(1-v)+gl*100,b=pB*v+bB*(1-v)+gl*100;
-        const edge = (m > 0 && m < 0.95) ? 12 : 0;
+        const edge = (m > 0 && m < 0.98) ? 14 : 0;
         d.data[px]=(r+edge)*m+bR*(1-m)+edge; 
         d.data[px+1]=(g+edge)*m+bG*(1-m)+edge; 
         d.data[px+2]=(b+edge)*m+bB*(1-m)+edge; 
@@ -204,18 +205,17 @@ function drw(){
 }
 
 function lp(){
-    p.f=parseFloat(document.getElementById('f').value);p.k=parseFloat(document.getElementById('k').value);
-    p.sc=parseFloat(document.getElementById('sc').value);p.sp=parseInt(document.getElementById('sp').value);
-    p.pRGB=hex(document.getElementById('pc').value);p.bRGB=hex(document.getElementById('bc').value);
-    document.getElementById('v-f').innerText=p.f.toFixed(3);document.getElementById('v-k').innerText=p.k.toFixed(3);
-    document.getElementById('v-sc').innerText=p.sc.toFixed(1);document.getElementById('v-sp').innerText=p.sp;
-    if(run){for(let i=0;i<p.sp;i++)stp();drw()} else { drw(); }
+    p.f=parseFloat(document.getElementById('f').value); p.k=parseFloat(document.getElementById('k').value);
+    p.sc=parseFloat(document.getElementById('sc').value); p.sp=parseInt(document.getElementById('sp').value);
+    p.pRGB=hex(document.getElementById('pc').value); p.bRGB=hex(document.getElementById('bc').value);
+    document.getElementById('v-f').innerText=p.f.toFixed(3); document.getElementById('v-k').innerText=p.k.toFixed(3);
+    document.getElementById('v-sc').innerText=p.sc.toFixed(2); document.getElementById('v-sp').innerText=p.sp;
+    if(run){for(let i=0;i<p.sp;i++)stp();drw();} else { drw(); }
     requestAnimationFrame(lp);
 }
 
-// Initial state
 document.getElementById('g-btn').classList.add('active');
-mU();lp();
+mU(); lp();
 </script>
 </body>
 </html>
